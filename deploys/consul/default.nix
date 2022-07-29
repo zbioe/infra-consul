@@ -33,7 +33,7 @@ in {
   # use xlbs to build envoyPackage
   environment.noXlibs = false;
 
-  environment.systemPackages = with pkgs; [ jq ];
+  environment.systemPackages = with pkgs; [ jq envoy ];
   deployment = {
     tags = [ "consul" "server" "replica" ];
     targetUser = "main";
@@ -61,6 +61,8 @@ in {
       log_level = "DEBUG";
       node_name = name;
       connect = { enabled = true; };
+      ports = { inherit (ports) grpc; };
+      addresses.grpc = "127.0.0.1 ";
     };
   };
 
