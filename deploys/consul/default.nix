@@ -1,7 +1,7 @@
 { name, nodes, pkgs, config, ... }:
 let
   inherit (builtins) fromJSON readFile attrNames attrValues length;
-  inherit (pkgs.lib) concatMapStrings;
+  inherit (pkgs.lib) concatMapStrings mkIf strings filter;
   ports = {
     admin = 19000;
     mesh = 8443; # gateway
@@ -45,24 +45,36 @@ in {
   services.consul = with keys; {
     enable = true;
     leaveOnStop = true;
-    extraConfig = {
+    extraConfig = let
+      filterHostsBy = datacenter:
+        map (nodeName: nodes.${nodeName}.config.deployment.targetHost)
+        (filter (a: (strings.hasPrefix datacenter a)) (attrNames nodes));
+      primary_hosts = filterHostsBy (k primary_datacenter);
+      hosts = filterHostsBy (k datacenter);
+      isPrimary = (k primary_datacenter != k datacenter);
+    in {
       ui_config = { enabled = true; };
       domain = k domain;
       datacenter = k datacenter;
+      primary_datacenter = (k primary_datacenter);
       server = true;
-      retry_join =
-        map (host: host.config.deployment.targetHost) (attrValues nodes);
+      retry_join = hosts;
       bind_addr = "0.0.0.0";
       client_addr = "0.0.0.0";
       recursors = [ "1.1.1.1" "8.8.8.8" ];
-      bootstrap_expect = length (attrNames nodes);
+      bootstrap_expect = length hosts;
       advertise_addr = config.deployment.targetHost;
       advertise_addr_wan = config.deployment.targetHost;
       log_level = "DEBUG";
       node_name = name;
-      connect = { enabled = true; };
+      connect = {
+        enabled = true;
+        enable_mesh_gateway_wan_federation = true;
+      };
       ports = { inherit (ports) grpc; };
-      addresses.grpc = "127.0.0.1 ";
+      addresses.grpc = "127.0.0.1";
+      primary_gateways =
+        mkIf isPrimary (map (h: "${h}:${toString ports.mesh}") primary_hosts);
     };
   };
 

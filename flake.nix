@@ -100,6 +100,7 @@
       colmena = let
         inherit (builtins) fromJSON readFile foldl' attrNames;
         output = fromJSON (readFile ./output.json);
+        keys = import ./keys;
       in {
         meta = { nixpkgs = pkgs; };
         defaults = import ./deploys/consul;
@@ -108,7 +109,10 @@
         ${name} = {
           deployment = {
             targetHost = output.${name}.value;
-            keys = import ./keys/consul.nix;
+            keys = if pkgs.lib.strings.hasPrefix "c1" name then
+              (keys "c1")
+            else
+              (keys "c2");
           };
         };
       }) (attrNames output));

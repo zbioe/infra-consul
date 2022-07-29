@@ -9,37 +9,41 @@
         dhcp.enable = true;
         dns.enable = true;
       };
-      n2 = {
-        mode = "nat";
-        domain = "n2.local";
-        addresses = [ "10.0.10.0/24" ];
-        dhcp.enable = true;
-        dns.enable = true;
-      };
     };
     volumes = {
       nixos = { source = ./result/nixos.qcow2; };
-      v1 = { source = "nixos"; };
-      v2 = { source = "nixos"; };
-      v3 = { source = "nixos"; };
+      c1v1 = { source = "nixos"; };
+      c1v2 = { source = "nixos"; };
+      c1v3 = { source = "nixos"; };
+      c2v1 = { source = "nixos"; };
+      c2v2 = { source = "nixos"; };
+      c2v3 = { source = "nixos"; };
     };
     replicas = {
-      r1 = {
-        interfaces = {
-          n1.addresses = [ "10.0.62.11" ];
-          n2.addresses = [ "10.0.10.11" ];
-        };
-        disks = [ "v1" ];
+      c1r1 = {
+        interfaces = { n1.addresses = [ "10.0.62.11" ]; };
+        disks = [ "c1v1" ];
       };
-      r2 = {
+      c1r2 = {
         interfaces = { n1.addresses = [ "10.0.62.12" ]; };
-        disks = [ "v2" ];
+        disks = [ "c1v2" ];
       };
-      r3 = {
+      c1r3 = {
         interfaces = { n1.addresses = [ "10.0.62.13" ]; };
-        disks = [ "v3" ];
+        disks = [ "c1v3" ];
+      };
+      c2r1 = {
+        interfaces = { n1.addresses = [ "10.0.62.14" ]; };
+        disks = [ "c2v1" ];
+      };
+      c2r2 = {
+        interfaces = { n1.addresses = [ "10.0.62.15" ]; };
+        disks = [ "c2v2" ];
+      };
+      c2r3 = {
+        interfaces = { n1.addresses = [ "10.0.62.16" ]; };
+        disks = [ "c2v3" ];
       };
     };
   };
-
 }
