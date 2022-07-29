@@ -11,8 +11,12 @@ let
     nix run .#destroy
   '';
   deploy = writeScriptBin "deploy" ''
-    nix run .#tests
+    nix run .#deploy
   '';
+  clean-ssh = writeScriptBin "clean-ssh" ''
+    nix run .#clean-ssh
+  '';
+
 in mkShell {
   packages = [
     # custom
@@ -20,6 +24,7 @@ in mkShell {
     apply
     destroy
     deploy
+    clean-ssh
     # pkgs
     consul
     consul-template

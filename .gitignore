@@ -1,7 +1,8 @@
 config.tf.json
-result
 .terraform
 .terraform.*
 terraform.*
 .direnv
+result
 .envrc
+output.json

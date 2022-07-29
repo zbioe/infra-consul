@@ -143,5 +143,17 @@ in {
         };
       }) (attrNames replicas));
     };
+    output = foldl' (a: b: a // b) { } (map (name:
+      let
+        inherit (builtins) head;
+        repl = replicas.${name};
+        addrs = map (interface: (head repl.interfaces.${interface}.addresses))
+          (attrNames repl.interfaces);
+      in {
+        ${name} = {
+          # first ip of first interface for each vm
+          value = head addrs;
+        };
+      }) (attrNames replicas));
   };
 }
