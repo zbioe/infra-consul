@@ -5,4 +5,7 @@ let
   # to production use
   # keyCommand = [ "vault" "read" "--field=env" "secret/mysecret" ]
   gen = text: { inherit group user text; };
-in { domain = gen "d"; }
+in {
+  domain = gen "d";
+  datacenter = gen "c1";
+}

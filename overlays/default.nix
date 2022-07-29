@@ -1,1 +1,4 @@
-(_: prev: { lib = prev.lib // import ../lib { inherit (prev) lib; }; })
+(_: prev: {
+  # extend lib
+  lib = prev.lib // import ../lib { inherit (prev) lib; };
+})

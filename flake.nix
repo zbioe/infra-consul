@@ -2,7 +2,7 @@
   description = "Consul Deploy";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/5516b991bcc4";
+    nixpkgs.url = "github:NixOS/nixpkgs/9370544d849b";
     # terraform module
     terranix = {
       url = "github:terranix/terranix";
@@ -52,32 +52,31 @@
         apply = {
           type = "app";
           program = toString (pkgs.writers.writeBash "apply" ''
+            set -euo pipefail
             if [[ -e config.tf.json ]]; then rm -f config.tf.json; fi
-            ${pkgs.git}/bin/git add -Nf result \
-              && cp ${terraformConfiguration} config.tf.json \
+              cp ${terraformConfiguration} config.tf.json \
               && ${terraform}/bin/terraform init \
               && ${terraform}/bin/terraform apply \
-              && ${terraform}/bin/terraform output -json > output.json \
-              && ${pkgs.git}/bin/git rm --cached result
+              && ${terraform}/bin/terraform output -json > output.json
           '');
         };
         # nix run ".#destroy"
         destroy = {
           type = "app";
           program = toString (pkgs.writers.writeBash "destroy" ''
+            set -euo pipefail
             if [[ -e config.tf.json ]]; then rm -f config.tf.json; fi
-            ${pkgs.git}/bin/git add -Nf result \
-              && cp ${terraformConfiguration} config.tf.json \
+              cp ${terraformConfiguration} config.tf.json \
               && ${terraform}/bin/terraform init \
               && ${terraform}/bin/terraform destroy \
-              && rm -f output.json \
-              && ${pkgs.git}/bin/git rm --cached result
+              && rm -f output.json
           '');
         };
         # nix run ".#clean-ssh"
         clean-ssh = {
           type = "app";
           program = toString (pkgs.writers.writeBash "clean-ssh" ''
+            set -euo pipefail
             for ip in $(${pkgs.jq}/bin/jq -r '.[].value' output.json); do
               ssh-keygen -R "$ip"
             done
@@ -87,10 +86,10 @@
         deploy = {
           type = "app";
           program = toString (pkgs.writers.writeBash "deploy" ''
+            set -euo pipefail
             [ -f output.json ] || apply
-            ${pkgs.git}/bin/git add -Nf output.json
+            clean-ssh
             ${pkgs.colmena}/bin/colmena apply
-            ${pkgs.git}/bin/git rm --cached output.json
           '');
         };
         # nix run

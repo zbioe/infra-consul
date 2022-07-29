@@ -28,6 +28,7 @@ in mkShell {
     # pkgs
     consul
     consul-template
+    envoy
     terraform
     terranix
     kube3d
