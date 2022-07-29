@@ -19,7 +19,7 @@
     let
       pkgs = import nixpkgs {
         inherit system;
-        overlays = [ self.overlay ];
+        overlays = [ self.overlays.default ];
       };
       system = "x86_64-linux";
       terraform =
@@ -29,6 +29,9 @@
         modules = [ ./provision.nix ];
       };
     in {
+      # overlay
+      overlays.default = import ./overlays;
+      # Packages
       packages.${system} = {
         devShell =
           import ./devShell.nix ({ inherit pkgs nixpkgs system; } // inputs);
@@ -42,8 +45,8 @@
         };
       };
       devShells.${system}.default = self.packages.${system}.devShell;
-      overlay = import ./overlays;
 
+      # Apps
       apps.${system} = {
         # nix run ".#apply"
         apply = {
@@ -65,13 +68,23 @@
               && ${terraform}/bin/terraform destroy
           '');
         };
-        # nix run ".#test"
-        tests = {
+        # nix run ".#deploy"
+        deploy = {
           type = "app";
-          program = "TODO";
+          program = toString (pkgs.writers.writeBash "deploy"
+            "${pkgs.colmena}/bin/colmena apply");
         };
         # nix run
         default = self.apps.${system}.apply;
+      };
+
+      # deploy
+      colmena = {
+        meta = { nixpkgs = pkgs; };
+        defaults = import deploys/consul;
+        r1 = { deployment = { targetHost = "10.0.62.11"; }; };
+        r2 = { deployment = { targetHost = "10.0.62.12"; }; };
+        r3 = { deployment = { targetHost = "10.0.62.13"; }; };
       };
     };
 }

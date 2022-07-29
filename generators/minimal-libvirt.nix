@@ -11,6 +11,14 @@ in {
   # Enable the OpenSSH daemon
   services.openssh.enable = true;
   services.openssh.passwordAuthentication = false;
+  fileSystems."/" = {
+    device = "/dev/disk/by-label/nixos";
+    fsType = "ext4";
+  };
+
+  boot.loader.grub.enable = true;
+  boot.loader.timeout = 0;
+  boot.loader.grub.devices = [ "/dev/sda" ];
 
   users = {
     mutableUsers = false;

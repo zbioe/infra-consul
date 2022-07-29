@@ -10,7 +10,7 @@ let
   destroy = writeScriptBin "destroy" ''
     nix run .#destroy
   '';
-  tests = writeScriptBin "tests" ''
+  deploy = writeScriptBin "deploy" ''
     nix run .#tests
   '';
 in mkShell {
@@ -19,7 +19,7 @@ in mkShell {
     build
     apply
     destroy
-    tests
+    deploy
     # pkgs
     consul
     consul-template
