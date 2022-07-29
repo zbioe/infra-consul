@@ -121,7 +121,7 @@ in {
         ${name} = let repl = replicas.${name};
         in {
           inherit name;
-          network_interface = foldl' (a: b: a // b) { } (map (vname:
+          network_interface = map (vname:
             let
               vnet = repl.interfaces.${vname};
               domain = networks.${vname}.domain;
@@ -131,7 +131,7 @@ in {
               addresses = vnet.addresses;
               mac = vnet.mac;
               wait_for_lease = vnet.wait_for_lease;
-            }) (attrNames repl.interfaces));
+            }) (attrNames repl.interfaces);
           disk = (map (dname: {
             volume_id = "\${ libvirt_volume.${dname}.id }";
             scsi = "true";

@@ -9,6 +9,13 @@
         dhcp.enable = true;
         dns.enable = true;
       };
+      n2 = {
+        mode = "nat";
+        domain = "n2.local";
+        addresses = [ "10.0.10.0/24" ];
+        dhcp.enable = true;
+        dns.enable = true;
+      };
     };
     volumes = {
       nixos = { source = ./result/nixos.qcow2; };
@@ -18,7 +25,10 @@
     };
     replicas = {
       r1 = {
-        interfaces = { n1.addresses = [ "10.0.62.11" ]; };
+        interfaces = {
+          n1.addresses = [ "10.0.62.11" ];
+          n2.addresses = [ "10.0.10.11" ];
+        };
         disks = [ "v1" ];
       };
       r2 = {
