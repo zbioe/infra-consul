@@ -11,6 +11,18 @@
           };
         };
       };
+      vault-setup = { config, pkgs, ... }: {
+        service = {
+          image = "vault:latest";
+          depends_on = [ "vault" ];
+          volumes = [ "./scripts/vault-init.sh:/init.sh" ];
+          entrypoint = "/init.sh";
+          environment = {
+            VAULT_ADDR = "http://vault:8200";
+            VAULT_TOKEN = "root-token";
+          };
+        };
+      };
     };
   };
 }
