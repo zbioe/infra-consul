@@ -1,4 +1,4 @@
-{ pkgs, nixpkgs, system, ... }:
+{ pkgs, system, ... }:
 with pkgs;
 let
   build = writeScriptBin "build" ''
@@ -39,11 +39,12 @@ in mkShell {
     # pkgs
     consul
     consul-template
+    vault
     envoy
     terraform
     terranix
     kube3d
-    helm
+    kubernetes-helm
     arion
     docker-client
     qemu-utils
@@ -51,8 +52,8 @@ in mkShell {
     vault
   ];
   shellHook = ''
-    export NIX_PATH=${nixpkgs}
-    export VAULT_ADDR=http://10.0.62.1:8200
-    export VAULT_TOKEN="root-token"
+    export NIX_PATH=${pkgs.path}
+    export VAULT_ADDR=''${CD_VAULT_ADDR:-"http://10.0.62.1:8200"}
+    export VAULT_TOKEN=''${CD_VAULT_TOKEN:-"root-token"}
   '';
 }

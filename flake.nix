@@ -33,8 +33,7 @@
       overlays = import ./overlays;
       # Packages
       packages.${system} = {
-        devShell =
-          import ./devShell.nix ({ inherit pkgs nixpkgs system; } // inputs);
+        devShell = import ./devShell.nix ({ inherit pkgs system; } // inputs);
         qcow = nixos-generators.nixosGenerate {
           inherit pkgs;
           modules = [
@@ -76,6 +75,7 @@
           program = toString (pkgs.writers.writeBash "local-k8s" ''
             set -euo pipefail
             scripts/local-k8s.sh
+            scripts/configre.sh
           '');
         };
 
@@ -106,7 +106,6 @@
           type = "app";
           program = toString (pkgs.writers.writeBash "deploy" ''
             set -euo pipefail
-            [ -f output.json ] || apply
             clean-ssh
             ${pkgs.colmena}/bin/colmena apply
           '');

@@ -3,14 +3,13 @@
 set -euo pipefail
 
 function put() {
-    secret=$1
+    path=$1
     key=$2
     value=$3
-    vault kv patch "secret/$secret" "$key"="$value" 2>/dev/null ||
-        vault kv put "secret/$secret" "$key"="$value"
+    vault kv patch "kv/$path" "$key"="$value" 2>/dev/null ||
+        vault kv put "kv/$path" "$key"="$value"
 }
 
-secret="consul"
 domain="d"
 
 jq --version || apk add --update jq
@@ -56,5 +55,35 @@ vault write pki_int/roles/$domain \
     generate_lease=true \
     max_ttl="720h"
 
-put $secret encryption.hcl 'encrypt = "MFS5Jn2SrIWNNmNbwREZsS+g+iPgjGt4LzI9P0DmjlQ="'
-put $secret encryption 'MFS5Jn2SrIWNNmNbwREZsS+g+iPgjGt4LzI9P0DmjlQ='
+vault policy write ca - <<EOF
+path "pki/cert/ca" {
+  capabilities = ["read"]
+}
+EOF
+
+vault policy write server - <<EOF
+path "pki_int/issue/${domain}" {
+  capabilities = ["create", "update"]
+}
+path "pki/cert/ca" {
+  capabilities = ["read"]
+}
+path "kv/*" {
+  capabilities = ["read"]
+}
+EOF
+
+vault policy write client - <<EOF
+path "pki_int/issue/${domain}" {
+  capabilities = ["update"]
+}
+path "pki/cert/ca" {
+  capabilities = ["read"]
+}
+path "kv/*" {
+  capabilities = ["read"]
+}
+EOF
+
+vault secrets enable -version=2 kv
+put consul/config/encryption key 'MFS5Jn2SrIWNNmNbwREZsS+g+iPgjGt4LzI9P0DmjlQ='

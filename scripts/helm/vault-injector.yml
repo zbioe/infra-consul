@@ -1,0 +1,17 @@
+ui:
+  enabled: true
+
+server:
+  enabled: false
+  raft:
+    enabled: true
+  serviceAccount:
+    create: true
+
+injector:
+  enabled: true
+  externalVaultAddr: "http://10.89.2.1:8200"
+  authPath: auth/k1
+
+dataStorage:
+  enabled: false

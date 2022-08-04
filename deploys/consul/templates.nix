@@ -17,6 +17,7 @@ let
         "templates used by service; used for script and config";
       config = mk' str "" "config used by templates";
       script = mk' str "" "reload script used by service";
+      wantedBy = mk' (listOf str) [ ] "list of wanted by to systemd";
       vault-addr = mk' str (getEnv "VAULT_ADDR") "vault addr";
       vault-token = mk' str (getEnv "VAULT_TOKEN") "vault token";
     };
@@ -82,10 +83,10 @@ in {
           description = "Consul-Template configuration for ${name}.";
           documentation = [ "https://github.com/hashicorp/consul-template" ];
           restartIfChanged = true;
-          wantedBy = [ "multi-user.target" "consul.service" ];
+          wantedBy = [ "multi-user.target" ] ++ cfg_name.wantedBy;
           requires = [ "network-online.target" ];
           after = [ "network-online.target" ];
-          path = [ cfg_name.package cfg_name.consulPackage ];
+          path = [ cfg_name.package cfg_name.consulPackage pkgs.jq pkgs.curl ];
           serviceConfig = {
             ExecStart = if cfg_name.text != "" then ''
               ${cfg_name.package}/bin/consul-template \
@@ -101,7 +102,7 @@ in {
             KillSignal = "SIGINT";
             LimitNOFILE = "infinity";
             LimitNPROC = "infinity";
-            Restart = "on-failure";
+            Restart = "always";
             RestartSec = "2";
             TasksMax = "infinity";
             User = cfg_name.user;

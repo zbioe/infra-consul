@@ -1,7 +1,7 @@
 { name, nodes, pkgs, config, ... }:
 let
   inherit (builtins) attrNames attrValues length match elemAt;
-  inherit (pkgs.lib) concatMapStrings mkIf strings filter assertMsg;
+  inherit (pkgs.lib) concatMapStrings mkIf strings filter assertMsg mkForce;
   # inherit (pkgs.lib.asserts) ;
   ports = {
     admin = 19000;
@@ -32,6 +32,10 @@ let
       datacenter = elemAt name_match 0;
       replica = elemAt name_match 1;
     };
+  variables = {
+    VAULT_ADDR = "http://10.0.62.1:8200";
+    VAULT_TOKEN = "root-token";
+  };
   inherit (data) datacenter replica;
 in {
   imports =
@@ -43,15 +47,10 @@ in {
 
   # use xlbs to build envoyPackage
   environment.noXlibs = false;
+
   environment.systemPackages = with pkgs; [ jq envoy vault openssl ];
-  environment.sessionVariables = {
-    VAULT_ADDR = "http://10.0.62.1:8200";
-    VAULT_TOKEN = "root-token";
-  };
-  environment.variables = {
-    VAULT_ADDR = "http://10.0.62.1:8200";
-    VAULT_TOKEN = "root-token";
-  };
+  environment.sessionVariables = variables;
+  environment = { inherit variables; };
   deployment = {
     tags = [ "consul" "server" "test" ];
     targetUser = "main";
@@ -78,11 +77,12 @@ in {
       RemainAfterExit = "yes";
       Type = "oneshot";
     };
-    unitConfig = {
-      # StartLimitIntervalSec="5";
-    };
   };
 
+  systemd.services.consul.serviceConfig = {
+    Restart = mkForce "always";
+    RestartSec = "2";
+  };
   services.consul = {
     enable = true;
     extraConfigFiles = [ "/etc/consul.d/encryption.hcl" ];
@@ -137,6 +137,7 @@ in {
   services = {
     consul-templates = {
       encryption = {
+        wantedBy = [ "consul.service" ];
         path = "/etc/consul.d/encryption.hcl";
         script = ''
           NEW_KEY=$(cut -f2 -d\" </etc/consul.d/gossip.hcl | sed -e '/^$/d')
@@ -151,16 +152,19 @@ in {
           done
         '';
         text = ''
-          {{ with secret "secret/consul" }}
-          encrypt = "{{ .Data.data.encryption}}"
+          {{ with secret "kv/data/consul/config/encryption" }}
+          encrypt = "{{ .Data.data.key}}"
           {{ end }}
         '';
       };
       pki = rec {
         script = "consul reload";
+        wantedBy = [ "consul.service" ];
         templates = let
           mkTmpl = field: ''
-            {{ with secret "pki_int/issue/${domain}" "common_name=server.${datacenter}.${domain}" "ttl=24h" "alt_names=localhost,${replica}.server.${datacenter}.${domain}" "ip_sans=127.0.0.1"}}
+            {{ with secret "pki_int/issue/${domain}" "common_name=server.${datacenter}.${domain}" "ttl=24h" "alt_names=localhost,${replica}.server.${datacenter}.${domain}" "ip_sans=127.0.0.1,${
+              nodes.${name}.config.deployment.targetHost
+            }"}}
             {{ .Data.${field} }}
             {{ end }}
           '';

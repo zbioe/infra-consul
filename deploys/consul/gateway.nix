@@ -10,6 +10,7 @@ in {
       package = mk' package pkgs.consul "Which Consul package to use";
       envoyPackage = mk' package pkgs.envoy "Which Envoy package to use";
       logLevel = mk' str "debug" "Which Envoy package to use";
+      user = mk' str "consul" "user used by systemd";
     };
   };
   config = let
@@ -31,6 +32,12 @@ in {
               -expose-servers \
               -- --log-level ${cfg.logLevel}
           '';
+          serviceConfig = {
+            Restart = "always";
+            RestartSec = "2";
+            User = cfg.user;
+            TasksMax = "infinity";
+          };
         };
       };
     };

@@ -8,6 +8,7 @@
           environment = {
             VAULT_ADDR = "0.0.0.0";
             VAULT_DEV_ROOT_TOKEN_ID = "root-token";
+            VAULT_LOG_LEVEL = "debug";
           };
         };
       };

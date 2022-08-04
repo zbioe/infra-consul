@@ -2,10 +2,9 @@ let
   # consul group
   group = "consul";
   user = "consul";
-  secret = "consul";
-  mkCmd = field: [ "vault" "kv" "get" "--field=${field}" "secret/${secret}" ];
+  mkCmd = field: path: [ "vault" "kv" "get" "--field=${field}" "kv/${path}" ];
   # gen = text: { inherit group user text; };
 in {
-  encryption = let keyCommand = mkCmd "encryption.hcl";
+  encryption = let keyCommand = mkCmd "key" "consul/config/encryption";
   in { inherit group user keyCommand; };
 }

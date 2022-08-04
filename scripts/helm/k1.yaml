@@ -1,0 +1,53 @@
+ui:
+  enabled: true
+
+global:
+  name: consul
+  namespace: consul
+  domain: d
+  logLevel: "debug"
+  image: "consul:1.12.1"
+  datacenter: k1
+  secretsBackend:
+    vault:
+      enabled: true
+      consulServerRole: d
+      consulClientRole: d
+      consulCARole: d
+
+  tls:
+    enabled: true
+    enableAutoEncrypt: true
+    verify: false
+    httpsOnly: false
+    caCert:
+      secretName: pki/cert/ca
+      secretKey: certificate
+
+  federation:
+    enabled: true
+    primaryDatacenter: c1
+
+  gossipEncryption:
+    secretName: kv/consul/config/encryption
+    secretKey: key
+
+injector:
+  enabled: true
+connectInject:
+  enabled: true
+controller:
+  enabled: true
+meshGateway:
+  enabled: true
+server:
+  extraConfig: |
+    {
+      "primary_datacenter": "c1",
+      "primary_gateways": [
+        "10.0.62.11:8443",
+        "10.0.62.12:8443",
+        "10.0.62.13:8443",
+      ],
+      "log_level": "DEBUG"
+    }
