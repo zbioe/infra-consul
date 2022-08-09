@@ -39,6 +39,7 @@
       # Packages
       packages.${system} = {
         devShell = import ./devShell.nix ({ inherit pkgs system; } // inputs);
+        # nix build .#qcow
         qcow = nixos-generators.nixosGenerate {
           inherit pkgs;
           modules = [
@@ -46,6 +47,15 @@
             ./generators/minimal-libvirt.nix
           ];
           format = "qcow";
+        };
+        # nix build .#gce
+        gce = nixos-generators.nixosGenerate {
+          inherit pkgs;
+          modules = [
+            # minimal libvirt qcow
+            ./generators/minimal-gcp.nix
+          ];
+          format = "gce";
         };
       };
       devShells.${system}.default = self.packages.${system}.devShell;

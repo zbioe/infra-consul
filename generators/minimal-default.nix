@@ -4,7 +4,6 @@ let
   username = "main";
   password = "alface";
 in {
-  # Enable the OpenSSH daemon
   services.openssh.enable = true;
   services.openssh.passwordAuthentication = false;
   fileSystems."/" = {
@@ -14,7 +13,6 @@ in {
 
   boot.loader.grub.enable = true;
   boot.loader.timeout = 0;
-  boot.loader.grub.devices = [ "/dev/sda" ];
 
   users = {
     mutableUsers = false;
