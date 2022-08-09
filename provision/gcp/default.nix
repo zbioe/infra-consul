@@ -60,8 +60,9 @@ in {
       });
 
     in {
-      provision.libvirt = {
-        uri = mk' str "qemu:///system" "qemu uri";
+      provision.gcp = {
+        project = mk' str "" "project name";
+        region = mk' str "us-east1" "region name";
         # network submodule
         networks = mkOption {
           type = (attrsOf networksModule);
@@ -83,7 +84,7 @@ in {
       };
     };
   config = let
-    virt = config.provision.libvirt;
+    virt = config.provision.gcp;
     networks = virt.networks;
     volumes = virt.volumes;
     replicas = virt.replicas;
@@ -144,14 +145,21 @@ in {
       }) (attrNames replicas));
     };
     output = foldl' (a: b: a // b) { } (map (name:
-      let inherit (builtins) head;
+      let
+        inherit (builtins) head;
+        repl = replicas.${name};
+        addrs = map (interface: (head repl.interfaces.${interface}.addresses))
+          (attrNames repl.interfaces);
       in {
-        # first ip of first interface for each vm
         ${name} = {
+          # first ip of first interface for each vm
           value = {
             inherit name;
-            ip.pub =
-              "\${ libvirt_domain.${name}.network_interface.0.addresses.0 }";
+            domain = name;
+            ip = {
+              pub = head addrs;
+              priv = head addrs;
+            };
           };
         };
       }) (attrNames replicas));

@@ -1,6 +1,5 @@
 { config, lib, pkgs, ... }: {
-  imports = [ ./provision/libvirt ];
-  provision.libvirt = {
+  provision.gcp = {
     networks = {
       n1 = {
         mode = "nat";

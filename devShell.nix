@@ -1,17 +1,35 @@
 { pkgs, system, ... }:
 with pkgs;
 let
+  inherit (builtins) readFile;
+  inherit (writers) writeBash;
   build = writeScriptBin "build" ''
     nix build .#$*
   '';
   build-qcow = writeScriptBin "build-qcow" ''
     build qcow
+    # add image to cache
+    git add -Nf ./result
   '';
   apply = writeScriptBin "apply" ''
+    # defaults to local
+    nix run .#apply
+  '';
+  apply-local = writeScriptBin "apply-local" ''
+    nix run .#apply-local
+  '';
+  apply-gcp = writeScriptBin "apply-gcp" ''
     nix run .#apply
   '';
   destroy = writeScriptBin "destroy" ''
+    # defaults to local
     nix run .#destroy
+  '';
+  destroy-local = writeScriptBin "destroy-local" ''
+    nix run .#destroy-local
+  '';
+  destroy-gcp = writeScriptBin "destroy-gcp" ''
+    nix run .#destroy-gcp
   '';
   deploy = writeScriptBin "deploy" ''
     nix run .#deploy
@@ -25,17 +43,29 @@ let
   local-k8s = writeScriptBin "local-k8s" ''
     nix run .#local-k8s
   '';
+  terranix-apply =
+    writeBash "terraform-apply" (readFile ./scripts/terranix-apply.sh);
+  terranix-destroy =
+    writeBash "terraform-destroy" (readFile ./scripts/terranix-destroy.sh);
 in mkShell {
   packages = [
     # custom
     build
     build-qcow
+    minikube
     apply
+    apply-local
+    apply-gcp
+    destroy-local
+    destroy-gcp
     destroy
     deploy
     clean-ssh
     local-vault
     local-k8s
+    # terranix
+    # terranix-apply
+    # terranix-destroy
     # pkgs
     consul
     consul-template
@@ -50,6 +80,7 @@ in mkShell {
     qemu-utils
     colmena
     vault
+    bashInteractive
   ];
   shellHook = ''
     export NIX_PATH=${pkgs.path}

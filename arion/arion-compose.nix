@@ -8,7 +8,7 @@
           environment = {
             VAULT_ADDR = "0.0.0.0";
             VAULT_DEV_ROOT_TOKEN_ID = "root-token";
-            VAULT_LOG_LEVEL = "debug";
+            VAULT_LOG_LEVEL = "trace";
           };
         };
       };
@@ -16,7 +16,7 @@
         service = {
           image = "vault:latest";
           depends_on = [ "vault" ];
-          volumes = [ "./scripts/vault-init.sh:/init.sh" ];
+          volumes = [ "../scripts/vault-init.sh:/init.sh" ];
           entrypoint = "/init.sh";
           environment = {
             VAULT_ADDR = "http://vault:8200";

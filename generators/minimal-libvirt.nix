@@ -1,6 +1,6 @@
 { modulesPath, ... }:
 let
-  ssh-keys = import ../ssh-keys.nix;
+  ssh-keys = import ./ssh-keys.nix;
   username = "main";
   password = "alface";
 in {

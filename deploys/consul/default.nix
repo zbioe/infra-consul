@@ -52,7 +52,7 @@ in {
   environment.sessionVariables = variables;
   environment = { inherit variables; };
   deployment = {
-    tags = [ "consul" "server" "test" ];
+    tags = [ "consul" "server" datacenter ];
     targetUser = "main";
     targetPort = 22;
   };

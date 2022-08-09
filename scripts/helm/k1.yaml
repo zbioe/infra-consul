@@ -18,8 +18,8 @@ global:
   tls:
     enabled: true
     enableAutoEncrypt: true
-    verify: false
-    httpsOnly: false
+    # verify: false
+    # httpsOnly: false
     caCert:
       secretName: pki/cert/ca
       secretKey: certificate

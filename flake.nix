@@ -22,12 +22,17 @@
         overlays = [ self.overlays.default ];
       };
       system = "x86_64-linux";
-      terraform =
-        pkgs.terraform.withPlugins (p: [ p.null p.external p.libvirt ]);
-      terraformConfiguration = terranix.lib.terranixConfiguration {
-        inherit system pkgs;
-        modules = [ ./provision.nix ];
-      };
+      terraform = pkgs.terraform.withPlugins
+        (p: [ p.null p.external p.libvirt p.google p.azurerm ]);
+
+      genConfig = env:
+        terranix.lib.terranixConfiguration {
+          inherit system pkgs;
+          modules = [ ./provision ./env/${env}/config.nix ];
+        };
+
+      localConfig = genConfig "local";
+      gcpConfig = genConfig "gcp";
     in {
       # overlay
       overlays = import ./overlays;
@@ -47,24 +52,33 @@
 
       # Apps
       apps.${system} = {
+
         # nix run ".#apply"
-        apply = {
+        # defaults to local
+        apply = self.apps.${system}.apply-local;
+
+        # nix run ".#apply-local"
+        apply-local = {
           type = "app";
-          program = toString (pkgs.writers.writeBash "apply" ''
-            set -euo pipefail
-            if [[ -e config.tf.json ]]; then rm -f config.tf.json; fi
-              cp ${terraformConfiguration} config.tf.json \
-              && ${terraform}/bin/terraform init \
-              && ${terraform}/bin/terraform apply \
-              && ${terraform}/bin/terraform output -json > output.json
+          program = toString (pkgs.writers.writeBash "apply-local" ''
+            scripts/terranix-apply.sh "local" ${localConfig}
           '');
         };
+
+        # nix run ".#apply-gcp"
+        apply-gcp = {
+          type = "app";
+          program = toString (pkgs.writers.writeBash "apply-gcp" ''
+            scripts/terranix-apply.sh "gcp" ${gcpConfig}
+          '');
+        };
+
         # nix run ".#local-vault"
         local-vault = {
           type = "app";
           program = toString (pkgs.writers.writeBash "local-vault" ''
             set -euo pipefail
-
+            cd arion/
             arion up
           '');
         };
@@ -74,29 +88,37 @@
           type = "app";
           program = toString (pkgs.writers.writeBash "local-k8s" ''
             set -euo pipefail
-            scripts/local-k8s.sh
-            scripts/configre.sh
+            scripts/k8s/local-k8s.sh
+            scripts/k8s/configre.sh
           '');
         };
 
         # nix run ".#destroy"
-        destroy = {
+        # defaults to local
+        destroy = self.apps.${system}.destroy-local;
+
+        # nix run ".#destroy-local"
+        destroy-local = {
           type = "app";
-          program = toString (pkgs.writers.writeBash "destroy" ''
-            set -euo pipefail
-            if [[ -e config.tf.json ]]; then rm -f config.tf.json; fi
-              cp ${terraformConfiguration} config.tf.json \
-              && ${terraform}/bin/terraform init \
-              && ${terraform}/bin/terraform destroy \
-              && rm -f output.json
+          program = toString (pkgs.writers.writeBash "destroy-local" ''
+            scripts/terranix-destroy.sh "local" ${localConfig}
           '');
         };
+
+        # nix run ".#destroy-gcp
+        destroy-gcp = {
+          type = "app";
+          program = toString (pkgs.writers.writeBash "destroy-gcp" ''
+            scripts/terranix-destroy.sh "gcp" ${gcpConfig}
+          '');
+        };
+
         # nix run ".#clean-ssh"
         clean-ssh = {
           type = "app";
           program = toString (pkgs.writers.writeBash "clean-ssh" ''
             set -euo pipefail
-            for ip in $(${pkgs.jq}/bin/jq -r '.[].value' output.json); do
+            for ip in $(${pkgs.jq}/bin/jq -r '.[].value.ip.pub' ./env/*/output.json); do
               ssh-keygen -R "$ip"
             done
           '');
@@ -118,19 +140,24 @@
       colmena = let
         # read attributes from ouput.json gerated by `nix run .#apply`
         inherit (builtins) fromJSON readFile foldl' attrNames;
-        output = fromJSON (readFile ./output.json);
         keys = import ./keys; # datacenter: {...}
+        genOutput = env:
+          let output = fromJSON (readFile ./env/${env}/output.json);
+          in foldl' (a: b: a // b) { } (map (name:
+            let host = output.${name}.value;
+            in {
+              # generate hosts by name prefix
+              ${name} = {
+                deployment = {
+                  tags = [ env ];
+                  targetHost = host.ip.pub;
+                  keys = import ./keys;
+                };
+              };
+            }) (attrNames output));
       in {
         meta = { nixpkgs = pkgs; };
         defaults = import ./deploys/consul;
-      } // foldl' (a: b: a // b) { } (map (name: {
-        # generate hosts by name prefix
-        ${name} = {
-          deployment = {
-            targetHost = output.${name}.value;
-            keys = import ./keys;
-          };
-        };
-      }) (attrNames output));
+      } // (genOutput "local") // (genOutput "gcp");
     };
 }
