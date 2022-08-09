@@ -6,9 +6,9 @@ let
   build = writeScriptBin "build" ''
     env=$1
     image=$2
-    nix build --out-link "./env/$env/$image" .#$image
+    nix build --out-link "./env/$env/image" .#$image
     # add image to cache
-    git add -Nf ./env/$env/$image
+    git add -Nf ./env/$env/image
   '';
   build-qcow = writeScriptBin "build-qcow" ''
     build local qcow
