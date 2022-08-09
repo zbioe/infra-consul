@@ -140,6 +140,7 @@ in {
         wantedBy = [ "consul.service" ];
         path = "/etc/consul.d/encryption.hcl";
         script = ''
+          if !systemctl is-active -q consul; then echo consul is down && exit 0; fi
           NEW_KEY=$(cut -f2 -d\" </etc/consul.d/gossip.hcl | sed -e '/^$/d')
           consul keyring -install "$NEW_KEY"
           consul keyring -use "$NEW_KEY"
@@ -158,7 +159,10 @@ in {
         '';
       };
       pki = rec {
-        script = "consul reload";
+        script = ''
+          if !systemctl is-active -q consul; then echo consul is down && exit 0; fi
+          consul reload
+        '';
         wantedBy = [ "consul.service" ];
         templates = let
           mkTmpl = field: ''
