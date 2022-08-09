@@ -10,7 +10,7 @@
       };
     };
     volumes = {
-      nixos = { source = ../../result/nixos.qcow2; };
+      nixos = { source = qcow/nixos.qcow2; };
       c1v1 = { source = "nixos"; };
       c1v2 = { source = "nixos"; };
       c1v3 = { source = "nixos"; };

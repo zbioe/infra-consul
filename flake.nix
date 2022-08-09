@@ -43,7 +43,7 @@
         qcow = nixos-generators.nixosGenerate {
           inherit pkgs;
           modules = [
-            # minimal libvirt qcow
+            # minimal libvirt
             ./generators/minimal-libvirt.nix
           ];
           format = "qcow";
@@ -52,7 +52,7 @@
         gce = nixos-generators.nixosGenerate {
           inherit pkgs;
           modules = [
-            # minimal libvirt qcow
+            # minimal gcp
             ./generators/minimal-gcp.nix
           ];
           format = "gce";

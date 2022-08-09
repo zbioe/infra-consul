@@ -4,12 +4,17 @@ let
   inherit (builtins) readFile;
   inherit (writers) writeBash;
   build = writeScriptBin "build" ''
-    nix build .#$*
+    env=$1
+    image=$2
+    nix build --out-link "./env/$env/$image" .#$image
+    # add image to cache
+    git add -Nf ./env/$env/$image
   '';
   build-qcow = writeScriptBin "build-qcow" ''
-    build qcow
-    # add image to cache
-    git add -Nf ./result
+    build local qcow
+  '';
+  build-gce = writeScriptBin "build-gce" ''
+    build gcp gce
   '';
   apply = writeScriptBin "apply" ''
     # defaults to local
@@ -64,6 +69,7 @@ in mkShell {
     # custom
     build
     build-qcow
+    build-gce
     minikube
     apply
     apply-local
