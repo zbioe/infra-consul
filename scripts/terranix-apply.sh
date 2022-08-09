@@ -12,4 +12,4 @@ cp $configFile $chdir/config.tf.json &&
     terraform -chdir=$chdir init &&
     terraform -chdir=$chdir apply &&
     terraform -chdir=$chdir output -json >$chdir/output.json &&
-    git add -Nf $chdir/output.json
+    git update-index --assume-unchanged $chdir/output.json

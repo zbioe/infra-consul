@@ -8,7 +8,7 @@ let
     image=$2
     nix build --out-link "./env/$env/image" .#$image
     # add image to cache
-    git add -Nf ./env/$env/image
+    git update-index --assume-unchanged env/$env/image
   '';
   build-qcow = writeScriptBin "build-qcow" ''
     build local qcow
