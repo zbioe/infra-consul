@@ -114,7 +114,8 @@
         };
 
         # nix run ".#clean-ssh"
-        clean-ssh = self.apps.${system}.clean-ssh.program;
+        # defaults to local
+        clean-ssh = self.apps.${system}.clean-ssh-local.program;
 
         # nix run ".#clean-ssh-local"
         clean-ssh-local = {
@@ -142,7 +143,7 @@
           type = "app";
           program = toString (pkgs.writers.writeBash "deploy-local" ''
             set -euo pipefail
-            clean-ssh
+            ./scripts/clean-ssh.sh local
             ${pkgs.colmena}/bin/colmena apply --on @local
           '');
         };
@@ -151,7 +152,7 @@
           type = "app";
           program = toString (pkgs.writers.writeBash "deploy-gcp" ''
             set -euo pipefail
-            clean-ssh
+            ./scripts/clean-ssh.sh gcp
             ${pkgs.colmena}/bin/colmena apply --on @gcp
           '');
         };
