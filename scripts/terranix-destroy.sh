@@ -10,7 +10,5 @@ chdir=env/$envDir
 
 cp $configFile $chdir/config.tf.json &&
     terraform -chdir=$chdir init &&
-    terraform -chdir=$chdir apply &&
     terraform -chdir=$chdir destroy &&
-    git rm -f $chdir/output.json &&
     echo "{}" >$chdir/output.json

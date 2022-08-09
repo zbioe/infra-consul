@@ -34,8 +34,20 @@ let
   deploy = writeScriptBin "deploy" ''
     nix run .#deploy
   '';
+  deploy-local = writeScriptBin "deploy-local" ''
+    nix run .#deploy-local
+  '';
+  deploy-gcp = writeScriptBin "deploy-gcp" ''
+    nix run .#deploy-gcp
+  '';
   clean-ssh = writeScriptBin "clean-ssh" ''
     nix run .#clean-ssh
+  '';
+  clean-ssh-local = writeScriptBin "clean-ssh-local" ''
+    nix run .#clean-ssh-local
+  '';
+  clean-ssh-gcp = writeScriptBin "clean-ssh-gcp" ''
+    nix run .#clean-ssh-gcp
   '';
   local-vault = writeScriptBin "local-vault" ''
     nix run .#local-vault
@@ -60,7 +72,11 @@ in mkShell {
     destroy-gcp
     destroy
     deploy
+    deploy-local
+    deploy-gcp
     clean-ssh
+    clean-ssh-local
+    clean-ssh-gcp
     local-vault
     local-k8s
     # terranix

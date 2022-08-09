@@ -114,22 +114,45 @@
         };
 
         # nix run ".#clean-ssh"
-        clean-ssh = {
+        clean-ssh = self.apps.${system}.clean-ssh.program;
+
+        # nix run ".#clean-ssh-local"
+        clean-ssh-local = {
           type = "app";
-          program = toString (pkgs.writers.writeBash "clean-ssh" ''
-            set -euo pipefail
-            for ip in $(${pkgs.jq}/bin/jq -r '.[].value.ip.pub' ./env/*/output.json); do
-              ssh-keygen -R "$ip"
-            done
+          program = toString (pkgs.writers.writeBash "clean-ssh-local" ''
+            ./scripts/clean-ssh.sh local
+          '');
+        };
+
+        # nix run ".#clean-ssh-gcp"
+        clean-ssh-gcp = {
+          type = "app";
+          program = toString (pkgs.writers.writeBash "clean-ssh-gcp" ''
+            ./scripts/clean-ssh.sh gcp
           '');
         };
         # nix run ".#deploy"
+        # defaults to local
         deploy = {
           type = "app";
-          program = toString (pkgs.writers.writeBash "deploy" ''
+          program = self.apps.${system}.deploy-local.program;
+        };
+        # nix run ".#deploy-local"
+        deploy-local = {
+          type = "app";
+          program = toString (pkgs.writers.writeBash "deploy-local" ''
             set -euo pipefail
             clean-ssh
-            ${pkgs.colmena}/bin/colmena apply
+            ${pkgs.colmena}/bin/colmena apply --on @local
+          '');
+        };
+        # nix run ".#deploy-gcp"
+        deploy-gcp = {
+          type = "app";
+          program = toString (pkgs.writers.writeBash "deploy-gcp" ''
+            set -euo pipefail
+            clean-ssh
+            ${pkgs.colmena}/bin/colmena apply --on @gcp
           '');
         };
         # nix run
