@@ -7,3 +7,4 @@ result
 .envrc
 .tmp-arion-*
 output.json
+env/*/image
