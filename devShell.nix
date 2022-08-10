@@ -3,97 +3,122 @@ with pkgs;
 let
   inherit (builtins) readFile;
   inherit (writers) writeBash;
+
+  # Build images
   build = writeScriptBin "build" ''
-    env=$1
-    image=$2
-    nix build --out-link "./env/$env/image" .#$image
+    set -eu
+    image=$1
+    nix build --out-link "./images/$image" .#$image
     # add image to cache
-    git add -Nf env/$env/image
+    git add -Nf images/$image
   '';
   build-qcow = writeScriptBin "build-qcow" ''
-    build local qcow
+    build qcow
   '';
   build-gce = writeScriptBin "build-gce" ''
-    build gcp gce
+    build gce
   '';
+
+  # Apply using terraform
   apply = writeScriptBin "apply" ''
-    # defaults to local
-    nix run .#apply
+    env=''${1:-libvirt}
+    # defaults to libvirt
+    nix run .#apply-$env
   '';
-  apply-local = writeScriptBin "apply-local" ''
-    nix run .#apply-local
+  apply-libvirt = writeScriptBin "apply-libvirt" ''
+    apply libvirt
   '';
   apply-gcp = writeScriptBin "apply-gcp" ''
-    nix run .#apply
+    apply gcp
   '';
+
+  # Destroy using terraform
   destroy = writeScriptBin "destroy" ''
-    # defaults to local
-    nix run .#destroy
+    env=''${1:-libvirt}
+    # defaults to libvirt
+    nix run .#destroy-$env
   '';
-  destroy-local = writeScriptBin "destroy-local" ''
-    nix run .#destroy-local
+  destroy-libvirt = writeScriptBin "destroy-libvirt" ''
+    destroy libvirt
   '';
   destroy-gcp = writeScriptBin "destroy-gcp" ''
-    nix run .#destroy-gcp
+    destroy gcp
   '';
+
+  # Deploy nix using colmena
   deploy = writeScriptBin "deploy" ''
-    nix run .#deploy
+    env=''${1:-libvirt}
+    nix run .#deploy-$env
   '';
-  deploy-local = writeScriptBin "deploy-local" ''
-    nix run .#deploy-local
+  deploy-libvirt = writeScriptBin "deploy-libvirt" ''
+    deploy libvirt
   '';
   deploy-gcp = writeScriptBin "deploy-gcp" ''
-    nix run .#deploy-gcp
+    deploy gcp
   '';
+
+  # Clean SSH authorized keys
   clean-ssh = writeScriptBin "clean-ssh" ''
-    nix run .#clean-ssh
+    env=''${1:-"libvirt""}
+    [[ "$env" == all ]] && ./scripts/clean-ssh.sh
+    nix run .#clean-ssh-$env
   '';
-  clean-ssh-local = writeScriptBin "clean-ssh-local" ''
-    nix run .#clean-ssh-local
+  clean-ssh-libvirt = writeScriptBin "clean-ssh-libvirt" ''
+    nix run .#clean-ssh-libvirt
   '';
   clean-ssh-gcp = writeScriptBin "clean-ssh-gcp" ''
     nix run .#clean-ssh-gcp
   '';
+
+  # Up and Running local vault using docker-compose by arion
   local-vault = writeScriptBin "local-vault" ''
     nix run .#local-vault
   '';
+
+  # Up and running local k8s using k3d
   local-k8s = writeScriptBin "local-k8s" ''
     nix run .#local-k8s
   '';
-  terranix-apply =
-    writeBash "terraform-apply" (readFile ./scripts/terranix-apply.sh);
-  terranix-destroy =
-    writeBash "terraform-destroy" (readFile ./scripts/terranix-destroy.sh);
+
 in mkShell {
   packages = [
-    # custom
+    # build images
     build
     build-qcow
     build-gce
-    minikube
+
+    # provision apply
     apply
-    apply-local
+    apply-libvirt
     apply-gcp
-    destroy-local
-    destroy-gcp
+
+    # provision destroy
     destroy
+    destroy-libvirt
+    destroy-gcp
+
+    # deploy nix
     deploy
-    deploy-local
+    deploy-libvirt
     deploy-gcp
+
+    # clean ssh authorized keys
     clean-ssh
-    clean-ssh-local
+    clean-ssh-libvirt
     clean-ssh-gcp
+
+    # start local vault
     local-vault
+
+    # start local k8s
     local-k8s
-    # terranix
-    # terranix-apply
-    # terranix-destroy
+
     # pkgs
     consul
     consul-template
     vault
     envoy
-    terraform
+    terraformWithPlugins
     terranix
     kube3d
     kubernetes-helm

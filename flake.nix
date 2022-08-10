@@ -22,8 +22,6 @@
         overlays = [ self.overlays.default ];
       };
       system = "x86_64-linux";
-      terraform = pkgs.terraform.withPlugins
-        (p: [ p.null p.external p.libvirt p.google p.azurerm ]);
 
       genConfig = env:
         terranix.lib.terranixConfiguration {
@@ -31,7 +29,7 @@
           modules = [ ./provision ./env/${env}/config.nix ];
         };
 
-      localConfig = genConfig "local";
+      libvirtConfig = genConfig "libvirt";
       gcpConfig = genConfig "gcp";
     in {
       # overlay
@@ -64,14 +62,14 @@
       apps.${system} = {
 
         # nix run ".#apply"
-        # defaults to local
-        apply = self.apps.${system}.apply-local;
+        # defaults to libvirt
+        apply = self.apps.${system}.apply-libvirt;
 
-        # nix run ".#apply-local"
-        apply-local = {
+        # nix run ".#apply-libvirt"
+        apply-libvirt = {
           type = "app";
-          program = toString (pkgs.writers.writeBash "apply-local" ''
-            scripts/terranix-apply.sh "local" ${localConfig}
+          program = toString (pkgs.writers.writeBash "apply-libvirt" ''
+            scripts/terranix-apply.sh "libvirt" ${libvirtConfig}
           '');
         };
 
@@ -99,19 +97,19 @@
           program = toString (pkgs.writers.writeBash "local-k8s" ''
             set -euo pipefail
             scripts/k8s/local-k8s.sh
-            scripts/k8s/configre.sh
+            # scripts/k8s/configure.sh
           '');
         };
 
         # nix run ".#destroy"
-        # defaults to local
-        destroy = self.apps.${system}.destroy-local;
+        # defaults to libvirt
+        destroy = self.apps.${system}.destroy-libvirt;
 
-        # nix run ".#destroy-local"
-        destroy-local = {
+        # nix run ".#destroy-libvirt"
+        destroy-libvirt = {
           type = "app";
-          program = toString (pkgs.writers.writeBash "destroy-local" ''
-            scripts/terranix-destroy.sh "local" ${localConfig}
+          program = toString (pkgs.writers.writeBash "destroy-libvirt" ''
+            scripts/terranix-destroy.sh "libvirt" ${libvirtConfig}
           '');
         };
 
@@ -124,14 +122,14 @@
         };
 
         # nix run ".#clean-ssh"
-        # defaults to local
-        clean-ssh = self.apps.${system}.clean-ssh-local.program;
+        # defaults to libvirt
+        clean-ssh = self.apps.${system}.clean-ssh-libvirt.program;
 
-        # nix run ".#clean-ssh-local"
-        clean-ssh-local = {
+        # nix run ".#clean-ssh-libvirt"
+        clean-ssh-libvirt = {
           type = "app";
-          program = toString (pkgs.writers.writeBash "clean-ssh-local" ''
-            ./scripts/clean-ssh.sh local
+          program = toString (pkgs.writers.writeBash "clean-ssh-libvirt" ''
+            ./scripts/clean-ssh.sh libvirt
           '');
         };
 
@@ -143,18 +141,18 @@
           '');
         };
         # nix run ".#deploy"
-        # defaults to local
+        # defaults to libvirt
         deploy = {
           type = "app";
-          program = self.apps.${system}.deploy-local.program;
+          program = self.apps.${system}.deploy-libvirt.program;
         };
-        # nix run ".#deploy-local"
-        deploy-local = {
+        # nix run ".#deploy-libvirt"
+        deploy-libvirt = {
           type = "app";
-          program = toString (pkgs.writers.writeBash "deploy-local" ''
+          program = toString (pkgs.writers.writeBash "deploy-libvirt" ''
             set -euo pipefail
-            ./scripts/clean-ssh.sh local
-            ${pkgs.colmena}/bin/colmena apply --on @local
+            ./scripts/clean-ssh.sh libvirt
+            ${pkgs.colmena}/bin/colmena apply --on @libvirt
           '');
         };
         # nix run ".#deploy-gcp"
@@ -182,6 +180,7 @@
             in {
               # generate hosts by name prefix
               ${name} = {
+                imports = [ ./generators/minimal-${env}.nix ];
                 deployment = {
                   tags = [ env ];
                   targetHost = host.ip.pub;
@@ -192,6 +191,6 @@
       in {
         meta = { nixpkgs = pkgs; };
         defaults = import ./deploys/consul;
-      } // (genOutput "local") // (genOutput "gcp");
+      } // (genOutput "libvirt") // (genOutput "gcp");
     };
 }

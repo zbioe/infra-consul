@@ -1,5 +1,5 @@
 { config, lib, pkgs, ... }:
 
 {
-  imports = [ ./libvirt ];
+  imports = [ ./libvirt ./gcp ];
 }

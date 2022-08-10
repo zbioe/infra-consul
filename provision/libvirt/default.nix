@@ -61,6 +61,7 @@ in {
 
     in {
       provision.libvirt = {
+        enable = mkBool' false "enable libvirt provision";
         uri = mk' str "qemu:///system" "qemu uri";
         # network submodule
         networks = mkOption {
@@ -88,10 +89,12 @@ in {
     volumes = virt.volumes;
     replicas = virt.replicas;
     inherit (builtins) attrNames foldl';
+    inherit (lib) mkIf;
   in {
-    terraform.required_providers = { libvirt.source = "dmacvicar/libvirt"; };
-    provider.libvirt = { uri = virt.uri; };
-    resource = {
+    terraform.required_providers =
+      mkIf virt.enable { libvirt.source = "dmacvicar/libvirt"; };
+    provider.libvirt = mkIf virt.enable { uri = virt.uri; };
+    resource = mkIf virt.enable {
       libvirt_network = foldl' (a: b: a // b) { } (map (name: {
         ${name} = {
           inherit (networks.${name}) name;
@@ -143,7 +146,7 @@ in {
         };
       }) (attrNames replicas));
     };
-    output = foldl' (a: b: a // b) { } (map (name:
+    output = mkIf virt.enable (foldl' (a: b: a // b) { } (map (name:
       let inherit (builtins) head;
       in {
         # first ip of first interface for each vm
@@ -154,6 +157,6 @@ in {
               "\${ libvirt_domain.${name}.network_interface.0.addresses.0 }";
           };
         };
-      }) (attrNames replicas));
+      }) (attrNames replicas)));
   };
 }

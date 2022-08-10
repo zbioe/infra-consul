@@ -2,7 +2,12 @@
 let
   inherit (builtins) attrNames attrValues length match elemAt;
   inherit (pkgs.lib) concatMapStrings mkIf strings filter assertMsg mkForce;
-  # inherit (pkgs.lib.asserts) ;
+  inherit (data) datacenter replica;
+  variables = {
+    CONSUL_HTTP_ADDR = "http://127.0.0.1:8500";
+    VAULT_ADDR = "http://10.0.62.1:8200";
+    VAULT_TOKEN = "root-token";
+  };
   ports = {
     admin = 19000;
     mesh = 8443; # gateway
@@ -32,14 +37,8 @@ let
       datacenter = elemAt name_match 0;
       replica = elemAt name_match 1;
     };
-  variables = {
-    VAULT_ADDR = "http://10.0.62.1:8200";
-    VAULT_TOKEN = "root-token";
-  };
-  inherit (data) datacenter replica;
 in {
-  imports =
-    [ ../../generators/minimal-libvirt.nix ./gateway.nix ./templates.nix ];
+  imports = [ ./gateway.nix ./templates.nix ];
   networking.hostName = name;
   networking.extraHosts = concatMapStrings (hostName: ''
     ${config.deployment.targetHost} ${hostName}
@@ -140,8 +139,8 @@ in {
         wantedBy = [ "consul.service" ];
         path = "/etc/consul.d/encryption.hcl";
         script = ''
-          if !systemctl is-active -q consul; then echo consul is down && return; fi
-          NEW_KEY=$(cut -f2 -d\" </etc/consul.d/gossip.hcl | sed -e '/^$/d')
+          if ! systemctl is-active -q consul; then echo consul is down && exit 0; fi
+          NEW_KEY=$(cut -f2 -d\" </etc/consul.d/encryption.hcl | sed -e '/^$/d')
           consul keyring -install "$NEW_KEY"
           consul keyring -use "$NEW_KEY"
           KEYS=$(curl -s "$CONSUL_HTTP_ADDR/v1/operator/keyring")
@@ -160,7 +159,7 @@ in {
       };
       pki = rec {
         script = ''
-          if !systemctl is-active -q consul; then echo consul is down && return; fi
+          if ! systemctl is-active -q consul; then echo consul is down && exit 0; fi
           consul reload
         '';
         wantedBy = [ "consul.service" ];

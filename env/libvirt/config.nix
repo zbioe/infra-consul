@@ -1,5 +1,7 @@
 { config, lib, pkgs, ... }: {
   provision.libvirt = {
+    enable = true;
+    uri = "qemu:///system";
     networks = {
       n1 = {
         mode = "nat";
@@ -10,7 +12,7 @@
       };
     };
     volumes = {
-      nixos = { source = image/nixos.qcow2; };
+      nixos = { source = ../../images/qcow/nixos.qcow2; };
       c1v1 = { source = "nixos"; };
       c1v2 = { source = "nixos"; };
       c1v3 = { source = "nixos"; };

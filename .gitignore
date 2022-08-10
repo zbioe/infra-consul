@@ -4,7 +4,6 @@ config.tf.json
 terraform.*
 .direnv
 result
-.envrc
 .tmp-arion-*
 output.json
-env/*/image
+images/*
