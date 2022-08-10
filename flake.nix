@@ -26,7 +26,7 @@
       genConfig = env:
         terranix.lib.terranixConfiguration {
           inherit system pkgs;
-          modules = [ ./provision ./env/${env}/config.nix ];
+          modules = [ ./provision/${env} ./env/${env}/config.nix ];
         };
 
       libvirtConfig = genConfig "libvirt";
