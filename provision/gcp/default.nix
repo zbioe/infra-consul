@@ -9,7 +9,7 @@ in {
       networksModule = submodule ({ config, name, ... }: {
         options = {
           project = mk' str gcp.project "project";
-          name = mk' str config.networks.${name} "name of network";
+          name = mk' str name "name of network";
           mtu = mk' int 1460 "Maximum Transmission Unit in bytes";
           description = mk' str "description of this resource" "";
           routing_mode = mk' (enum [ "GLOBAL" "REGIONAL" ]) "REGIONAL"
@@ -18,6 +18,26 @@ in {
             "create a subnet for each region automatically across the 10.128.0.0/9 address range";
           delete_default_routes_on_create = mkBool' false
             "If set to true, default routes (0.0.0.0/0) will be deleted immediately after network creation.";
+          subnetworks = mkOption {
+            type = (attrsOf subnetworksModule);
+            default = { };
+            description = "subnetwork options";
+          };
+        };
+      });
+
+      subnetworksModule = submodule ({ config, name, ... }: {
+        options = {
+          name = mk' str name "name of subnetwork";
+          cidr_range = mk' str "10.62.0.0/16" "cidr range network";
+          network = mk' str config.name "network name";
+          description = mk' str "subnetwork ${name}" "subnetwork description";
+          secondary_ranges = mk' (listOf (submodule {
+            options = {
+              range_name = mk' str name "name-of-subnetwork";
+              cidr_range = mk' str name "10.21.0.0/16";
+            };
+          })) [ ] "secondary ip range list";
         };
       });
 
@@ -49,6 +69,14 @@ in {
           default = { };
           description = "network options";
         };
+
+        # subnetwork submodule
+        subnetworks = mkOption {
+          type = (attrsOf subnetworksModule);
+          default = { };
+          description = "subnetwork options";
+        };
+
         # # volumes submodule
         # volumes = mkOption {
         #   type = (attrsOf volumesModule);
@@ -85,6 +113,31 @@ in {
             auto_create_subnetworks delete_default_routes_on_create;
         };
       }) (attrNames networks));
+      # google_compute_subnetwork_old = foldl' (a: b: a // b) { } (map (name:
+      #   let subnetworks = networks.${name};
+      #   in foldl' (a: b: a // b) { } (map (sname: {
+      #     ${sname} = with subnetworks.${sname}; {
+      #       name = sname;
+      #       id_cidr_range = cidr_range;
+      #       network = "\${ google_compute_network.${name}.id }";
+      #       # secondary_ip_range = secondary_ranges;
+      #     };
+      #   }) (attrNames subnetworks))) (attrNames networks));
+
+      google_compute_subnetwork = foldl' (a: b: a // b) { } (map (name:
+        let subnetworks = networks.${name}.subnetworks;
+        in foldl' (a: b: a // b) { } (map (sname: {
+          ${sname} = let sub = subnetworks.${sname};
+          in {
+            name = sname;
+            ip_cidr_range = sub.cidr_range;
+            network = "\${ google_compute_network.${name}.id }";
+            secondary_ip_range = map (v: {
+              range_name = v.range_name;
+              ip_cidr_range = v.cidr_range;
+            }) sub.secondary_ranges;
+          };
+        }) (attrNames subnetworks))) (attrNames networks));
       # google_compute_instance = foldl' (a: b: a // b) { } (map (name: {
       #   ${name} = {
       #     inherit name;

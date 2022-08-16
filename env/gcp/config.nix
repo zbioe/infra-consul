@@ -2,7 +2,23 @@
   provision.gcp = {
     enable = true;
     project = "bornlogic-consul";
-    networks = { n1 = { description = "test network"; }; };
+    networks = {
+      prod = { description = "production network"; };
+      stag = { description = "staging network"; };
+      test = {
+        description = "testing network";
+        subnetworks = {
+          n1 = {
+            cidr_range = "10.3.0.0/16";
+            description = "n1 network";
+            secondary_ranges = [{
+              range_name = "test-second-range";
+              cidr_range = "10.4.0.0/16";
+            }];
+          };
+        };
+      };
+    };
     #   volumes = {
     #     nixos = {
     #       source = let
