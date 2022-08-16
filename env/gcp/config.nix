@@ -2,20 +2,7 @@
   provision.gcp = {
     enable = true;
     project = "bornlogic-consul";
-    replicas = {
-      test = {
-
-      };
-    };
-    #   networks = {
-    #     n1 = {
-    #       mode = "nat";
-    #       domain = "n1.local";
-    #       addresses = [ "10.0.62.0/24" ];
-    #       dhcp.enable = true;
-    #       dns.enable = true;
-    #     };
-    #   };
+    networks = { n1 = { description = "test network"; }; };
     #   volumes = {
     #     nixos = {
     #       source = let

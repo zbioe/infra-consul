@@ -3,6 +3,10 @@
 Consul cluster in local vms server
 
 ## Requirements
+
+Have some dependecies required for use modules
+
+# LIBVIRTD
 `libvirtd` needs to works in your environment.  
 Add follow options to your `configuration.nix`:  
 ``` nix
@@ -18,6 +22,21 @@ Add follow options to your `configuration.nix`:
   services.qemuGuest.enable = true;
 }
 ```
+
+# GCP
+``` nix
+{
+  environment.systemPackages = [
+    pkgs.google-cloud-sdk 
+  ];
+}
+```
+
+Get auth to GCP with:
+``` bash
+gcloud auth application-default login
+```
+
 ## Build
 
 * `nix build .#qcow` genarate `qcow2` image to use in `livirt`  

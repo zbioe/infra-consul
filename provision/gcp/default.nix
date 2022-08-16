@@ -5,26 +5,19 @@ in {
     let
       inherit (lib.opt) mk' mkBool';
       inherit (lib) mkOption;
+      gcp = config.provision.gcp;
       networksModule = submodule ({ config, name, ... }: {
         options = {
-          name = mk' str name "name of network";
-          mode = mk' str "nat" "mode of network";
-          domain = mk' str "vm.local" "domain";
-          addresses = mk' (listOf str) [ "10.0.62.0/24" ] "list of CIDR's";
-          dhcp = mkOption {
-            description = "dhcp options";
-            type = (submodule {
-              options = { enable = mkBool' false "enable dhcp"; };
-            });
-            default = { };
-          };
-          dns = mkOption {
-            description = "dns options";
-            type = (submodule {
-              options = { enable = mkBool' false "enable dns"; };
-            });
-            default = { };
-          };
+          project = mk' str gcp.project "project";
+          name = mk' str config.networks.${name} "name of network";
+          mtu = mk' int 1460 "Maximum Transmission Unit in bytes";
+          description = mk' str "description of this resource" "";
+          routing_mode = mk' (enum [ "GLOBAL" "REGIONAL" ]) "REGIONAL"
+            "The network-wide routing mode to use.";
+          auto_create_subnetworks = mkBool' false
+            "create a subnet for each region automatically across the 10.128.0.0/9 address range";
+          delete_default_routes_on_create = mkBool' false
+            "If set to true, default routes (0.0.0.0/0) will be deleted immediately after network creation.";
         };
       });
 
@@ -51,11 +44,11 @@ in {
         zone = mk' str "us-east1-c"
           "zone name. expected to be in same region setted, if not it takes priority over region";
         # network submodule
-        # networks = mkOption {
-        #   type = (attrsOf networksModule);
-        #   default = { };
-        #   description = "network options";
-        # };
+        networks = mkOption {
+          type = (attrsOf networksModule);
+          default = { };
+          description = "network options";
+        };
         # # volumes submodule
         # volumes = mkOption {
         #   type = (attrsOf volumesModule);
@@ -77,7 +70,6 @@ in {
     replicas = gcp.replicas;
     inherit (builtins) attrNames foldl';
     inherit (lib) mkIf;
-
   in {
     terraform.required_providers =
       mkIf gcp.enable { gooogle.source = "hashicorp/google"; };
@@ -87,25 +79,32 @@ in {
       zone = gcp.zone;
     };
     resource = mkIf gcp.enable {
-      google_compute_instance = foldl' (a: b: a // b) { } (map (name: {
-        ${name} = {
-          inherit name;
-          machine_type = replicas.${name}.machine_type;
-          netowrk_interface = { network = "default"; };
+      google_compute_network = foldl' (a: b: a // b) { } (map (name: {
+        ${name} = with networks.${name}; {
+          inherit project name mtu description routing_mode
+            auto_create_subnetworks delete_default_routes_on_create;
         };
-      }) (attrNames replicas));
+      }) (attrNames networks));
+      # google_compute_instance = foldl' (a: b: a // b) { } (map (name: {
+      #   ${name} = {
+      #     inherit name;
+      #     machine_type = replicas.${name}.machine_type;
+      #     netowrk_interface = { network = "default"; };
+      #   };
+      # }) (attrNames replicas));
     };
-    #     libvirt_network = foldl' (a: b: a // b) { } (map (name: {
-    #       ${name} = {
-    #         inherit (networks.${name}) name;
-    #         #
-    #         mode = networks.${name}.mode;
-    #         dhcp = { enabled = networks.${name}.dhcp.enable; };
-    #         dns = { enabled = networks.${name}.dns.enable; };
-    #         domain = networks.${name}.domain;
-    #         addresses = networks.${name}.addresses;
-    #       };
-    #     }) (attrNames networks));
+
+    # libvirt_network = foldl' (a: b: a // b) { } (map (name: {
+    #   ${name} = {
+    #     inherit (networks.${name}) name;
+    #     #
+    #     mode = networks.${name}.mode;
+    #     dhcp = { enabled = networks.${name}.dhcp.enable; };
+    #     dns = { enabled = networks.${name}.dns.enable; };
+    #     domain = networks.${name}.domain;
+    #     addresses = networks.${name}.addresses;
+    #   };
+    # }) (attrNames networks));
 
     #     libvirt_volume = foldl' (a: b: a // b) { } (map (name: {
     #       ${name} = let
