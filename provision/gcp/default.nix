@@ -49,6 +49,7 @@ in {
           location = mk' str gcp.region "location";
           labels = mk' (attrsOf str) { name = name; } "labels";
           name = mk' str name "name of image";
+          zone = mk' str gcp.zone "name of image";
           family = mk' str "nixos" "name of family";
           description = mk' str "description ${name}" "images description";
           source = mk' str
@@ -58,18 +59,17 @@ in {
         };
       });
 
-      volumesModule = submodule ({ config, name, ... }: {
-        options = {
-          name = mk' str name "name of volume";
-          source = mk' (oneOf [ str path ]) "nixos"
-            "path for imgs or name of another volume";
-        };
-      });
-
       replicasModule = submodule ({ config, name, ... }: {
         options = {
+          project = mk' str gcp.project "project";
           name = mk' str name "name of replica";
           machine_type = mk' str "e2-micro" "type of machine";
+          tags = mk' (listOf str) [ name ] "tags";
+          image = mk' str "nixos" "image used by instances";
+          zone = mk' str gcp.zone "name of image";
+          size = mk' int 20 "size of vm";
+          network = mk' str "default" "network interface used";
+          subnetwork = mk' str "n1" "subnetwork interface used";
         };
       });
 
@@ -100,13 +100,8 @@ in {
           default = { };
           description = "image options";
         };
-        # # volumes submodule
-        # volumes = mkOption {
-        #   type = (attrsOf volumesModule);
-        #   default = { };
-        #   description = "volumes options";
-        # };
-        # # replica submodule
+
+        # replica submodule
         replicas = mkOption {
           type = (attrsOf replicasModule);
           default = { };
@@ -116,18 +111,18 @@ in {
     };
   config = let
     inherit (builtins) attrNames;
-    inherit (lib) mkIf readFile;
+    inherit (lib) mkIf readFile assertMsg;
     inherit (lib.strings) removeSuffix;
     inherit (pkgs.lib.cfg) attrsMap;
     gcp = config.provision.gcp;
     networks = gcp.networks;
     images = gcp.images;
-    volumes = gcp.volumes;
     replicas = gcp.replicas;
 
     uuid = removeSuffix "\n" (readFile
       (pkgs.runCommand "gen-uuid" { buildInputs = [ pkgs.libuuid ]; }
         "uuidgen > $out"));
+
   in {
     terraform.required_providers =
       mkIf gcp.enable { google-beta.source = "hashicorp/google-beta"; };
@@ -148,7 +143,8 @@ in {
       });
       google_storage_bucket_object = attrsMap images (name: {
         ${name} = with images.${name}; {
-          inherit name source;
+          inherit source;
+          name = "${name}.tar.gz";
           metadata = labels;
           bucket = config.resource.google_storage_bucket.${name}.name;
           # don't recreate it every time
@@ -160,26 +156,12 @@ in {
         ${name} = with images.${name}; {
           inherit name project;
           family = name;
-          source_image = "\${ google_storage_bucket_object.${name}.self_link }";
+          raw_disk = {
+            source = "\${ google_storage_bucket_object.${name}.self_link }";
+            container_type = "TAR";
+          };
         };
       });
-
-      # google_compute_instance = attrsMap replicas (name: {
-      #   name = with replicas.${name}; {
-      #     inherit name;
-      #   };
-      # });
-
-      # google_compute_machine_image = foldl' (a: b: a // b) { } (map (name:
-      #   let img = images.${name};
-      #   in {
-      #     ${name} = {
-      #       inherit (img) project name description;
-      #       # source_image = img.source;
-      #       source_instance = img.source;
-      #       provider = "google-beta";
-      #     };
-      #   }) (attrNames images));
 
       google_compute_network = attrsMap networks (name: {
         ${name} = with networks.${name}; {
@@ -204,77 +186,41 @@ in {
           };
         }));
 
+      google_compute_instance = attrsMap replicas (name: {
+        ${name} = with replicas.${name}; {
+          inherit name machine_type tags project zone;
+          network_interface = {
+            network = "\${ google_compute_network.${network}.self_link }";
+            subnetwork =
+              "\${ google_compute_subnetwork.${subnetwork}.self_link }";
+            access_config = { };
+          };
+          boot_disk = {
+            initialize_params = {
+              inherit size;
+              image = "\${ google_compute_image.${image}.self_link }";
+            };
+          };
+        };
+      });
+
     };
-
-    # libvirt_network = foldl' (a: b: a // b) { } (map (name: {
-    #   ${name} = {
-    #     inherit (networks.${name}) name;
-    #     #
-    #     mode = networks.${name}.mode;
-    #     dhcp = { enabled = networks.${name}.dhcp.enable; };
-    #     dns = { enabled = networks.${name}.dns.enable; };
-    #     domain = networks.${name}.domain;
-    #     addresses = networks.${name}.addresses;
-    #   };
-    # }) (attrNames networks));
-
-    #     libvirt_volume = foldl' (a: b: a // b) { } (map (name: {
-    #       ${name} = let
-    #         vsource = volumes.${name}.source;
-    #         vname = volumes.${name}.name;
-    #       in {
-    #         name = vname;
-    #         source = if builtins.isString volumes.${name}.source then
-    #           "\${ libvirt_volume.${vsource}.id }"
-    #         else
-    #           toString vsource;
-    #       };
-    #     }) (attrNames volumes));
-
-    #     libvirt_domain = foldl' (a: b: a // b) { } (map (name: {
-    #       ${name} = let repl = replicas.${name};
-    #       in {
-    #         inherit name;
-    #         network_interface = map (vname:
-    #           let
-    #             vnet = repl.interfaces.${vname};
-    #             domain = networks.${vname}.domain;
-    #           in {
-    #             network_id = "\${ libvirt_network.${vname}.id }";
-    #             hostname = name + "." + domain;
-    #             addresses = vnet.addresses;
-    #             mac = vnet.mac;
-    #             wait_for_lease = vnet.wait_for_lease;
-    #           }) (attrNames repl.interfaces);
-    #         disk = (map (dname: {
-    #           volume_id = "\${ libvirt_volume.${dname}.id }";
-    #           scsi = "true";
-    #           url = "";
-    #           wwn = "";
-    #           block_device = "";
-    #           file = "";
-    #         }) repl.disks);
-    #       };
-    #     }) (attrNames replicas));
-    #   };
-    #   output = foldl' (a: b: a // b) { } (map (name:
-    #     let
-    #       inherit (builtins) head;
-    #       repl = replicas.${name};
-    #       addrs = map (interface: (head repl.interfaces.${interface}.addresses))
-    #         (attrNames repl.interfaces);
-    #     in {
-    #       ${name} = {
-    #         # first ip of first interface for each vm
-    #         value = {
-    #           inherit name;
-    #           domain = name;
-    #           ip = {
-    #             pub = head addrs;
-    #             priv = head addrs;
-    #           };
-    #         };
-    #       };
-    #     }) (attrNames replicas));
+    output = attrsMap replicas (name:
+      let
+        inherit (builtins) head;
+        repl = replicas.${name};
+        pub =
+          "\${ google_compute_instance.${name}.network_interface.0.access_config.0.nat_ip }";
+        priv =
+          "\${ google_compute_instance.${name}.network_interface.0.network_ip }";
+      in {
+        ${name} = {
+          value = {
+            inherit name;
+            domain = name;
+            ip = { inherit pub priv; };
+          };
+        };
+      });
   };
 }
