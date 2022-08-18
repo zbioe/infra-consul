@@ -2,23 +2,34 @@
   provision.gcp = {
     enable = true;
     project = "bornlogic-consul";
-    networks = {
-      prod = { description = "production network"; };
-      stag = { description = "staging network"; };
-      test = {
-        description = "testing network";
-        subnetworks = {
-          n1 = {
-            cidr_range = "10.3.0.0/16";
-            description = "n1 network";
-            secondary_ranges = [{
-              range_name = "test-second-range";
-              cidr_range = "10.4.0.0/16";
-            }];
-          };
-        };
+    # networks = {
+    # prod = { description = "production network"; };
+    # stag = { description = "staging network"; };
+
+    # test = {
+    #   description = "testing network";
+    #   subnetworks = {
+    #     n1 = {
+    #       cidr_range = "10.3.0.0/16";
+    #       description = "n1 network";
+    #       secondary_ranges = [{
+    #         range_name = "test-second-range";
+    #         cidr_range = "10.4.0.0/16";
+    #       }];
+    #     };
+    #   };
+    # };
+
+    # };
+
+    images = {
+      nixos = {
+        location = "US";
+        source = toString
+          ../../images/gce/nixos-image-22.05.20220728.9370544-x86_64-linux.raw.tar.gz;
       };
     };
+
     #   volumes = {
     #     nixos = {
     #       source = let

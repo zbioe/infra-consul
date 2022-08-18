@@ -28,6 +28,8 @@ in {
 
       subnetworksModule = submodule ({ config, name, ... }: {
         options = {
+          project = mk' str gcp.project "project";
+          region = mk' str gcp.region "region name";
           name = mk' str name "name of subnetwork";
           cidr_range = mk' str "10.62.0.0/16" "cidr range network";
           network = mk' str config.name "network name";
@@ -38,6 +40,21 @@ in {
               cidr_range = mk' str name "10.21.0.0/16";
             };
           })) [ ] "secondary ip range list";
+        };
+      });
+
+      imagesModule = submodule ({ config, name, ... }: {
+        options = {
+          project = mk' str gcp.project "project";
+          location = mk' str gcp.region "location";
+          labels = mk' (attrsOf str) { name = name; } "labels";
+          name = mk' str name "name of image";
+          family = mk' str "nixos" "name of family";
+          description = mk' str "description ${name}" "images description";
+          source = mk' str
+            "gs://nixos-images-gcp/nixos-image-21.05.4709.88579effa7e-x86_64-linux.raw.tar.z"
+            "path for imgs or name of another volume";
+
         };
       });
 
@@ -77,6 +94,12 @@ in {
           description = "subnetwork options";
         };
 
+        # images submodule
+        images = mkOption {
+          type = (attrsOf imagesModule);
+          default = { };
+          description = "image options";
+        };
         # # volumes submodule
         # volumes = mkOption {
         #   type = (attrsOf volumesModule);
@@ -92,43 +115,85 @@ in {
       };
     };
   config = let
+    inherit (builtins) attrNames;
+    inherit (lib) mkIf readFile;
+    inherit (lib.strings) removeSuffix;
+    inherit (pkgs.lib.cfg) attrsMap;
     gcp = config.provision.gcp;
     networks = gcp.networks;
+    images = gcp.images;
     volumes = gcp.volumes;
     replicas = gcp.replicas;
-    inherit (builtins) attrNames foldl';
-    inherit (lib) mkIf;
+
+    uuid = removeSuffix "\n" (readFile
+      (pkgs.runCommand "gen-uuid" { buildInputs = [ pkgs.libuuid ]; }
+        "uuidgen > $out"));
   in {
     terraform.required_providers =
-      mkIf gcp.enable { gooogle.source = "hashicorp/google"; };
-    provider.google = mkIf gcp.enable {
+      mkIf gcp.enable { google-beta.source = "hashicorp/google-beta"; };
+    provider.google-beta = mkIf gcp.enable {
       project = gcp.project;
       region = gcp.region;
       zone = gcp.zone;
     };
+
     resource = mkIf gcp.enable {
-      google_compute_network = foldl' (a: b: a // b) { } (map (name: {
+      google_storage_bucket = attrsMap images (name: {
+        ${name} = with images.${name}; {
+          inherit project location labels;
+          name = "${name}-${project}";
+          # without it, will not destroy bucket with `destroy-gcp`
+          # force_destroy = true;
+        };
+      });
+      google_storage_bucket_object = attrsMap images (name: {
+        ${name} = with images.${name}; {
+          inherit name source;
+          metadata = labels;
+          bucket = config.resource.google_storage_bucket.${name}.name;
+          # don't recreate it every time
+          lifecycle = { ignore_changes = [ "source" ]; };
+        };
+      });
+
+      google_compute_image = attrsMap images (name: {
+        ${name} = with images.${name}; {
+          inherit name project;
+          family = name;
+          source_image = "\${ google_storage_bucket_object.${name}.self_link }";
+        };
+      });
+
+      # google_compute_instance = attrsMap replicas (name: {
+      #   name = with replicas.${name}; {
+      #     inherit name;
+      #   };
+      # });
+
+      # google_compute_machine_image = foldl' (a: b: a // b) { } (map (name:
+      #   let img = images.${name};
+      #   in {
+      #     ${name} = {
+      #       inherit (img) project name description;
+      #       # source_image = img.source;
+      #       source_instance = img.source;
+      #       provider = "google-beta";
+      #     };
+      #   }) (attrNames images));
+
+      google_compute_network = attrsMap networks (name: {
         ${name} = with networks.${name}; {
           inherit project name mtu description routing_mode
             auto_create_subnetworks delete_default_routes_on_create;
         };
-      }) (attrNames networks));
-      # google_compute_subnetwork_old = foldl' (a: b: a // b) { } (map (name:
-      #   let subnetworks = networks.${name};
-      #   in foldl' (a: b: a // b) { } (map (sname: {
-      #     ${sname} = with subnetworks.${sname}; {
-      #       name = sname;
-      #       id_cidr_range = cidr_range;
-      #       network = "\${ google_compute_network.${name}.id }";
-      #       # secondary_ip_range = secondary_ranges;
-      #     };
-      #   }) (attrNames subnetworks))) (attrNames networks));
+      });
 
-      google_compute_subnetwork = foldl' (a: b: a // b) { } (map (name:
+      google_compute_subnetwork = attrsMap networks (name:
         let subnetworks = networks.${name}.subnetworks;
-        in foldl' (a: b: a // b) { } (map (sname: {
+        in attrsMap subnetworks (sname: {
           ${sname} = let sub = subnetworks.${sname};
           in {
+            inherit (sub) project region;
             name = sname;
             ip_cidr_range = sub.cidr_range;
             network = "\${ google_compute_network.${name}.id }";
@@ -137,14 +202,8 @@ in {
               ip_cidr_range = v.cidr_range;
             }) sub.secondary_ranges;
           };
-        }) (attrNames subnetworks))) (attrNames networks));
-      # google_compute_instance = foldl' (a: b: a // b) { } (map (name: {
-      #   ${name} = {
-      #     inherit name;
-      #     machine_type = replicas.${name}.machine_type;
-      #     netowrk_interface = { network = "default"; };
-      #   };
-      # }) (attrNames replicas));
+        }));
+
     };
 
     # libvirt_network = foldl' (a: b: a // b) { } (map (name: {
