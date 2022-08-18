@@ -1,12 +1,12 @@
 { name, nodes, pkgs, config, ... }:
 let
-  inherit (builtins) attrNames attrValues length match elemAt;
+  inherit (builtins) attrNames attrValues length match elemAt getEnv;
   inherit (pkgs.lib) concatMapStrings mkIf strings filter assertMsg mkForce;
   inherit (data) datacenter replica;
   variables = {
     CONSUL_HTTP_ADDR = "http://127.0.0.1:8500";
-    VAULT_ADDR = "http://10.0.62.1:8200";
-    VAULT_TOKEN = "root-token";
+    VAULT_ADDR = getEnv "VAULT_ADDR";
+    VAULT_TOKEN = getEnv "VAULT_TOKEN";
   };
   ports = {
     admin = 19000;

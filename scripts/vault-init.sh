@@ -16,9 +16,9 @@ jq --version || apk add --update jq
 
 vault secrets enable pki
 vault secrets tune -max-lease-ttl=8760h pki
-vault write pki/root/generate/internal \
-  common_name=$domain \
-  ttl=8760h
+vault write -field=certificate pki/root/generate/internal \
+  common_name="$domain" \
+  ttl=87600h >CA_cert.crt
 
 vault write pki/config/urls \
   issuing_certificates="$VAULT_ADDR/v1/pki/ca" \
@@ -28,10 +28,6 @@ vault write pki/roles/$domain \
   allowed_domains=$domain \
   allow_subdomains=true \
   max_ttl=72h
-
-vault write -field=certificate pki/root/generate/internal \
-  common_name="$domain" \
-  ttl=87600h >CA_cert.crt
 
 vault secrets enable -path=pki_int pki
 vault secrets tune -max-lease-ttl=43800h pki_int
