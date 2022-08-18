@@ -18,6 +18,9 @@ let
   build-gce = writeScriptBin "build-gce" ''
     build gce
   '';
+  build-azure = writeScriptBin "build-azure" ''
+    build azure
+  '';
 
   # Apply using terraform
   apply = writeScriptBin "apply" ''
@@ -30,6 +33,9 @@ let
   '';
   apply-gcp = writeScriptBin "apply-gcp" ''
     apply gcp
+  '';
+  apply-azure = writeScriptBin "apply-azure" ''
+    apply azure
   '';
 
   # Destroy using terraform
@@ -44,6 +50,9 @@ let
   destroy-gcp = writeScriptBin "destroy-gcp" ''
     destroy gcp
   '';
+  destroy-azure = writeScriptBin "destroy-azure" ''
+    destroy azure
+  '';
 
   # Deploy nix using colmena
   deploy = writeScriptBin "deploy" ''
@@ -55,6 +64,9 @@ let
   '';
   deploy-gcp = writeScriptBin "deploy-gcp" ''
     deploy gcp
+  '';
+  deploy-azure = writeScriptBin "deploy-azure" ''
+    deploy azure
   '';
 
   # Clean SSH authorized keys
@@ -69,43 +81,49 @@ let
   clean-ssh-gcp = writeScriptBin "clean-ssh-gcp" ''
     nix run .#clean-ssh-gcp
   '';
+  clean-ssh-azure = writeScriptBin "clean-ssh-azure" ''
+    nix run .#clean-ssh-azure
+  '';
 
   # Up and Running local vault using docker-compose by arion
   local-vault = writeScriptBin "local-vault" ''
     nix run .#local-vault
   '';
-
   # Up and running local k8s using k3d
   local-k8s = writeScriptBin "local-k8s" ''
     nix run .#local-k8s
   '';
-
 in mkShell {
   packages = [
     # build images
     build
     build-qcow
     build-gce
+    build-azure
 
     # provision apply
     apply
     apply-libvirt
     apply-gcp
+    apply-azure
 
     # provision destroy
     destroy
     destroy-libvirt
     destroy-gcp
+    destroy-azure
 
     # deploy nix
     deploy
     deploy-libvirt
     deploy-gcp
+    deploy-azure
 
     # clean ssh authorized keys
     clean-ssh
     clean-ssh-libvirt
     clean-ssh-gcp
+    clean-ssh-azure
 
     # start local vault
     local-vault
