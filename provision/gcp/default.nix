@@ -80,6 +80,7 @@ in {
         region = mk' str "us-east1" "region name";
         zone = mk' str "us-east1-c"
           "zone name. expected to be in same region setted, if not it takes priority over region";
+        domain = mk' str "d" "domain";
         # network submodule
         networks = mkOption {
           type = (attrsOf networksModule);
@@ -119,10 +120,6 @@ in {
     images = gcp.images;
     replicas = gcp.replicas;
 
-    uuid = removeSuffix "\n" (readFile
-      (pkgs.runCommand "gen-uuid" { buildInputs = [ pkgs.libuuid ]; }
-        "uuidgen > $out"));
-
   in {
     terraform.required_providers =
       mkIf gcp.enable { google-beta.source = "hashicorp/google-beta"; };
@@ -138,7 +135,7 @@ in {
           inherit project location labels;
           name = "${name}-${project}";
           # without it, will not destroy bucket with `destroy-gcp`
-          # force_destroy = true;
+          force_destroy = true;
         };
       });
       google_storage_bucket_object = attrsMap images (name: {
@@ -215,9 +212,8 @@ in {
           "\${ google_compute_instance.${name}.network_interface.0.network_ip }";
       in {
         ${name} = {
-          value = {
-            inherit name;
-            domain = name;
+          value = with gcp; {
+            inherit name domain;
             ip = { inherit pub priv; };
           };
         };
