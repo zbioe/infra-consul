@@ -30,6 +30,19 @@
       };
     };
 
+    firewall = {
+      test-allow-all-to-consul = {
+        description = "allow all consul ips to tagged consul machines";
+        source_tags = [ "consul" "test" ];
+        target_tags = [ "consul" "test" ];
+        network = "test";
+        allow = [{
+          protocol = "tcp";
+          ports = [ "0-65535" ];
+        }];
+      };
+    };
+
     replicas = {
       c1r1 = {
         tags = [ "consul" "server" "nixos" "test" ];

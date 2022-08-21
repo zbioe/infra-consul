@@ -57,6 +57,26 @@ in {
         };
       });
 
+      firewallModule = submodule ({ config, name, ... }: {
+        options = {
+          project = mk' str gcp.project "project";
+          location = mk' str gcp.region "location";
+          source_tags = mk' (listOf str) [ name ] "tags";
+          target_tags = mk' (listOf str) [ name ] "tags";
+          description = mk' str "description ${name}" "rule description";
+          network = mk' str "default" "network interface used";
+          allow = mk' (listOf rulesModule) [ ] "allowed rules";
+          deny = mk' (listOf rulesModule) [ ] "denied rules";
+        };
+      });
+
+      rulesModule = submodule {
+        options = {
+          protocol = mk' str "all" "protocol";
+          ports = mk' (listOf str) [ ] "ports allowed";
+        };
+      };
+
       replicasModule = submodule ({ config, name, ... }: {
         options = {
           project = mk' str gcp.project "project";
@@ -100,6 +120,13 @@ in {
           description = "image options";
         };
 
+        # rules submodule
+        firewall = mkOption {
+          type = (attrsOf firewallModule);
+          default = { };
+          description = "rules options";
+        };
+
         # replica submodule
         replicas = mkOption {
           type = (attrsOf replicasModule);
@@ -117,7 +144,7 @@ in {
     networks = gcp.networks;
     images = gcp.images;
     replicas = gcp.replicas;
-
+    firewall = gcp.firewall;
   in {
     terraform.required_providers =
       mkIf gcp.enable { google.source = "hashicorp/google"; };
@@ -196,6 +223,13 @@ in {
               image = "\${ google_compute_image.${image}.self_link }";
             };
           };
+        };
+      });
+
+      google_compute_firewall = attrsMap firewall (name: {
+        ${name} = with firewall.${name}; {
+          inherit name project description network source_tags target_tags allow
+            deny;
         };
       });
 

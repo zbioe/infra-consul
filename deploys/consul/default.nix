@@ -37,11 +37,17 @@ let
       datacenter = elemAt name_match 0;
       replica = elemAt name_match 1;
     };
+  filterHostsBy = datacenter:
+    map (nodeName: nodes.${nodeName}.config.deployment.targetHost)
+    (filter (a: (strings.hasPrefix datacenter a)) (attrNames nodes));
+  primary_hosts = filterHostsBy primary_datacenter;
+  hosts = filterHostsBy datacenter;
+  isPrimary = primary_datacenter == datacenter;
 in {
   imports = [ ./gateway.nix ./templates.nix ];
   networking.hostName = name;
-  networking.extraHosts = concatMapStrings (hostName: ''
-    ${config.deployment.targetHost} ${hostName}
+  networking.extraHosts = concatMapStrings (name: ''
+    ${nodes.${name}.config.deployment.targetHost} ${name}
   '') (attrNames nodes);
 
   # use xlbs to build envoyPackage
@@ -86,14 +92,7 @@ in {
     enable = true;
     extraConfigFiles = [ "/etc/consul.d/encryption.hcl" ];
     leaveOnStop = true;
-    extraConfig = let
-      filterHostsBy = datacenter:
-        map (nodeName: nodes.${nodeName}.config.deployment.targetHost)
-        (filter (a: (strings.hasPrefix datacenter a)) (attrNames nodes));
-      primary_hosts = filterHostsBy primary_datacenter;
-      hosts = filterHostsBy datacenter;
-      isPrimary = primary_datacenter == datacenter;
-    in {
+    extraConfig = {
       inherit domain datacenter primary_datacenter;
       ui_config = { enabled = true; };
       server = true;
