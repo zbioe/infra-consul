@@ -16,14 +16,14 @@ in {
           cidr_ranges =
             mk' (listOf str) [ "10.0.0.0/16" ] "cidr ranges network";
           dns_servers = mk' (listOf str) [ "1.1.1.1" "8.8.8.8" ] "dns servers";
+          subnetworks = mk' (attrsOf subnetworksModule) { } "subnetwork module";
         };
       });
 
       subnetworksModule = submodule ({ config, name, ... }: {
         options = {
           name = mk' str name "name of subnetwork";
-          cidr_ranges =
-            mk' (listOf str) [ "10.0.0.1/16" ] "cidr ranges network";
+          cidr_range = mk' str "10.0.0.1/16" "cidr ranges network";
         };
       });
 
@@ -76,12 +76,12 @@ in {
           description = "subnetwork options";
         };
 
-        # # images submodule
-        # images = mkOption {
-        #   type = (attrsOf imagesModule);
-        #   default = { };
-        #   description = "image options";
-        # };
+        # images submodule
+        images = mkOption {
+          type = (attrsOf imagesModule);
+          default = { };
+          description = "image options";
+        };
 
         # # replica submodule
         # replicas = mkOption {
@@ -121,11 +121,17 @@ in {
         tags = azure.tags;
       };
 
-      azure_virtual_network = attrsMap networks (name: {
+      azurerm_virtual_network = attrsMap networks (name: {
         ${name} = with networks.${name}; {
           inherit location name tags dns_servers;
           address_space = cidr_ranges;
           resource_group_name = group;
+          subnetworks = attrsMap subnetworks (sname: {
+            ${sname} = with subnetworks.${name}; {
+              name = sname;
+              address_prefix = cidr_range;
+            };
+          });
         };
       });
     };

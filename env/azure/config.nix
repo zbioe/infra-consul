@@ -3,29 +3,20 @@
     enable = true;
     group = "bornlogic-consul";
 
-    images = {
-      nixos = {
-        location = "US";
-        source = toString ../../images/azure/disk.vhd;
+    networks = {
+      prod = { tags = { env = "production"; }; };
+      stag = { tags = { env = "staging"; }; };
+      test = {
+        tags = { env = "testing"; };
+        cidr_ranges = [ "10.0.0.0/16" ];
+        subnetworks = { n1 = { cidr_range = "10.1.0.0/16"; }; };
       };
     };
 
-    # networks = {
-    #   prod = { description = "production network"; };
-    #   stag = { description = "staging network"; };
-
-    #   test = {
-    #     description = "testing network";
-    #     subnetworks = {
-    #       n1 = {
-    #         cidr_range = "10.3.0.0/16";
-    #         description = "n1 network";
-    #         secondary_ranges = [{
-    #           range_name = "test-second-range";
-    #           cidr_range = "10.4.0.0/16";
-    #         }];
-    #       };
-    #     };
+    # images = {
+    #   nixos = {
+    #     location = "US EAST 2";
+    #     source = toString ../../images/azure/disk.vhd;
     #   };
     # };
 
