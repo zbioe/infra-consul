@@ -27,7 +27,7 @@
           direction = "Inbound";
           description = "Allow SSH";
           access = "Allow";
-          protocol = "TCP";
+          protocol = "Tcp";
           source_port_range = "0";
           source_address_prefix = "*";
           destination_port_range = "22";
