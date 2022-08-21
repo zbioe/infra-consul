@@ -31,28 +31,37 @@ in {
 
       imagesModule = submodule ({ config, name, ... }: {
         options = {
-          project = mk' str azure.project "project";
-          location = mk' str azure.location "location";
-          labels = mk' (attrsOf str) { name = name; } "labels";
+          location = mk' str azure.location "location of image";
+          group = mk' str azure.group "resource group";
+          tags = mk' (attrsOf str) { inherit (config) family; } "tags";
           name = mk' str name "name of image";
-          zone = mk' str azure.zone "name of image";
           family = mk' str "nixos" "name of family";
-          description = mk' str "description ${name}" "images description";
           source = mk' str "" "path for imgs or name of another volume";
+        };
+      });
+
+      interfacesModule = submodule ({ config, name, ... }: {
+        options = {
+          group = mk' str azure.group "resource group";
+          location = mk' str azure.location "location of image";
+          name = mk' str name "name of interface";
+          tags = mk' (attrsOf str) { "image" = cfg.image; } "tags";
+          network = mk' str "default" "network interface used";
+          subnetwork = mk' str "n1" "subnetwork interface used";
         };
       });
 
       replicasModule = submodule ({ config, name, ... }: {
         options = {
-          project = mk' str gcp.project "project";
+          group = mk' str azure.group "resource group";
+          location = mk' str azure.location "location of image";
           name = mk' str name "name of replica";
-          machine_type = mk' str "e2-micro" "type of machine";
-          tags = mk' (attrsOf str) { "name" = name; } "tags";
+          vm_size = mk' str "Standard_D1_v2" "VM Size configuration";
+          tags = mk' (attrsOf str) { "image" = cfg.image; } "tags";
           image = mk' str "nixos" "image used by instances";
-          zone = mk' str azure.zone "name of image";
-          size = mk' int 20 "size of vm";
-          network = mk' str "default" "network interface used";
-          subnetwork = mk' str "n1" "subnetwork interface used";
+          disk_size = mk' int 20 "size of vm";
+          interfaces = mk' (listOf str) [ name ] "interfaces used by replica";
+          ssh_keys = mk' (listOf str) azure.ssh_keys "ssh keys to append in vm";
         };
       });
 
@@ -63,6 +72,7 @@ in {
         location = mk' str "East US 2" "location name";
         tags =
           mk' (attrsOf str) { app = "consul"; } "tags used in resource group";
+        ssh_keys = mk' (listOf str) [ ] "ssh keys to append in vm";
 
         # network submodule
         networks = mkOption {
@@ -85,12 +95,19 @@ in {
           description = "image options";
         };
 
-        # # replica submodule
-        # replicas = mkOption {
-        #   type = (attrsOf replicasModule);
-        #   default = { };
-        #   description = "replicas options";
-        # };
+        # interfaces submodule
+        interfaces = mkOption {
+          type = (attrsOf interfacesModule);
+          default = { };
+          description = "interface options";
+        };
+
+        # replica submodule
+        replicas = mkOption {
+          type = (attrsOf replicasModule);
+          default = { };
+          description = "replicas options";
+        };
       };
     };
   config = let
@@ -98,9 +115,9 @@ in {
     inherit (lib) mkIf readFile assertMsg;
     inherit (lib.strings) removeSuffix;
     inherit (pkgs.lib.cfg) attrsMap listMap;
-    azure = config.provision.azure;
-    networks = azure.networks;
 
+    azure = config.provision.azure;
+    inherit (azure) networks images interfaces replicas;
   in {
     terraform.required_providers =
       mkIf azure.enable { azurerm.source = "hashicorp/azurerm"; };
@@ -149,27 +166,156 @@ in {
               address_prefixes = cidr_ranges;
             };
           }));
+
+      # TODO:
+      # subnet_network_security_group_association =
+      # "\${ azurerm_network_security_group.${name}.id }";
+
+      azurerm_storage_account = attrsMap images (name: {
+        ${name} = with images.${name};
+          let
+            inherit (builtins) filter split isList;
+            inherit (lib) toLower concatMapStrings;
+            regexp = "([a-z0-9]+)";
+            splited_patterns = split regexp "${toLower group}${toLower name}";
+            filter_patterns = filter (s: isList s) splited_patterns;
+            uniq_name = concatMapStrings (s: toString s) filter_patterns;
+          in {
+            inherit location;
+            name = uniq_name;
+            resource_group_name = group;
+            account_tier = "Standard";
+            account_replication_type = "GRS";
+            tags = { inherit name; };
+          };
+      });
+
+      azurerm_storage_container = attrsMap images (name:
+        with images.${name}; {
+          ${name} = {
+            inherit name;
+            storage_account_name = "\${ azurerm_storage_account.${name}.name }";
+            container_access_type = "private";
+          };
+        });
+
+      azurerm_storage_blob = attrsMap images (name:
+        with images.${name}; {
+          ${name} = {
+            inherit source;
+            name = "${name}.vhd";
+            storage_account_name = "\${ azurerm_storage_account.${name}.name }";
+            storage_container_name =
+              "\${ azurerm_storage_container.${name}.name }";
+            type = "Page";
+            lifecycle = { ignore_changes = [ "source" ]; };
+            timeouts = {
+              create = "2h";
+              update = "2h";
+            };
+          };
+        });
+
+      # azurerm_managed_disk = attrsMap images (name:
+      #   with images.${name}; {
+      #     ${name} = {
+      #       inherit name location tags;
+      #       storage_account_id = "\${ azurerm_storage_account.${name}.id }";
+      #       resource_group_name = "\${ azurerm_resource_group.${group}.name }";
+      #       os_type = "Linux";
+      #       storage_account_type = "Standard_LRS";
+      #       create_option = "Import";
+      #       source_uri = "\${ azurerm_storage_blob.${name}.id }";
+      #       disk_size_gb = "2";
+      #     };
+      #   });
+
+      azurerm_image = attrsMap images (name:
+        with images.${name}; {
+          ${name} = {
+            inherit name location;
+            resource_group_name = group;
+            os_disk = {
+              os_type = "Linux";
+              os_state = "Generalized";
+              blob_uri = "\${ azurerm_storage_blob.${name}.url }";
+              size_gb = 2;
+            };
+          };
+        });
+
+      azurerm_public_ip = attrsMap interfaces (name: {
+        ${name} = with interfaces.${name}; {
+          inherit name location;
+          resource_group_name = group;
+          allocation_method = "Static";
+        };
+      });
+
+      azurerm_network_interface = attrsMap interfaces (name: {
+        ${name} = with interfaces.${name}; {
+          inherit name location;
+          resource_group_name = group;
+          ip_configuration = [{
+            inherit name;
+            subnet_id = "\${ azurerm_subnet.${subnetwork}.id }";
+            private_ip_address_allocation = "Dynamic";
+            public_ip_address_id = "\${ azurerm_public_ip.${name}.id }";
+          }];
+        };
+      });
+
+      azurerm_virtual_machine = attrsMap replicas (name:
+        with replicas.${name};
+        let inherit (replicas.${name}) interfaces;
+        in {
+          ${name} = {
+            inherit name location tags vm_size;
+            resource_group_name = group;
+            delete_os_disk_on_termination = true;
+            network_interface_ids =
+              map (iname: "\${ azurerm_network_interface.${iname}.id }")
+              interfaces;
+            os_profile_linux_config = {
+              ssh_keys = map (k: {
+                key_data = k;
+                path = "/home/main/.ssh/authorized_keys";
+              }) ssh_keys;
+              disable_password_authentication = true;
+            };
+            storage_image_reference = {
+              id = "\${ azurerm_image.${image}.id }";
+            };
+            os_profile = {
+              computer_name = name;
+              admin_username = "main";
+            };
+            storage_os_disk = {
+              inherit name;
+              disk_size_gb = disk_size;
+              create_option = "FromImage";
+              os_type = "Linux";
+              managed_disk_type = "Standard_LRS";
+            };
+          };
+        });
+
     };
 
-    # TODO:
-    # subnet_network_security_group_association =
-    # "\${ azurerm_network_security_group.${name}.id }";
-
-    # output = attrsMap replicas (name:
-    #   let
-    #     inherit (builtins) head;
-    #     repl = replicas.${name};
-    #     pub =
-    #       "\${ google_compute_instance.${name}.network_interface.0.access_config.0.nat_ip }";
-    #     priv =
-    #       "\${ google_compute_instance.${name}.network_interface.0.network_ip }";
-    #   in {
-    #     ${name} = {
-    #       value = with gcp; {
-    #         inherit name domain;
-    #         ip = { inherit pub priv; };
-    #       };
-    #     };
-    #   });
+    output = attrsMap interfaces (name:
+      let
+        inherit (builtins) head;
+        repl = replicas.${name};
+        pub = "\${ azurerm_virtual_machine.${name} }";
+        priv = "\${ azurerm_virtual_machine.${name} }";
+      in {
+        ${name} = {
+          sensitive = true;
+          value = with azure; {
+            inherit name;
+            ip = { inherit pub priv; };
+          };
+        };
+      });
   };
 }

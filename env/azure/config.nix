@@ -3,6 +3,7 @@
     enable = true;
     group = "bornlogic-consul";
     location = "East US 2";
+    ssh_keys = import ../../generators/ssh-keys.nix;
     networks = {
       prod = { tags = { env = "production"; }; };
       stag = { tags = { env = "staging"; }; };
@@ -13,35 +14,61 @@
       };
     };
 
-    # images = {
-    #   nixos = {
-    #     location = "US EAST 2";
-    #     source = toString ../../images/azure/disk.vhd;
-    #   };
-    # };
+    images = {
+      nixos = {
+        location = "East US 2";
+        source = toString ../../images/azure/disk.vhd;
+      };
+    };
 
-    # replicas = {
-    #   c2r1 = {
-    #     tags = [ "consul" "server" "nixos" "test" ];
-    #     network = "test";
-    #     subnetwork = "n1";
-    #     machine_type = "e2-medium";
-    #     zone = "us-east1-b";
-    #   };
-    #   c2r2 = {
-    #     tags = [ "consul" "server" "nixos" "test" ];
-    #     network = "test";
-    #     subnetwork = "n1";
-    #     machine_type = "e2-medium";
-    #     zone = "us-east1-c";
-    #   };
-    #   c2r3 = {
-    #     tags = [ "consul" "server" "nixos" "test" ];
-    #     network = "test";
-    #     subnetwork = "n1";
-    #     machine_type = "e2-medium";
-    #     zone = "us-east1-d";
-    #   };
-    # };
+    interfaces = {
+      c2r1 = {
+        network = "test";
+        subnetwork = "n1";
+        tags = { description = "mainly c2r1 interface"; };
+      };
+      c2r2 = {
+        network = "test";
+        subnetwork = "n1";
+        tags = { description = "mainly c2r2 interface"; };
+      };
+      c2r3 = {
+        network = "test";
+        subnetwork = "n1";
+        tags = { description = "mainly c2r3 interface"; };
+      };
+    };
+
+    replicas = {
+      c2r1 = {
+        tags = {
+          image = "nixos";
+          service = "consul";
+          environment = "test";
+        };
+        disk_size = 15;
+        interfaces = [ "c2r1" ];
+      };
+
+      c2r2 = {
+        tags = {
+          image = "nixos";
+          service = "consul";
+          environment = "test";
+        };
+        disk_size = 15;
+        interfaces = [ "c2r2" ];
+      };
+
+      c2r3 = {
+        tags = {
+          image = "nixos";
+          service = "consul";
+          environment = "test";
+        };
+        disk_size = 15;
+        interfaces = [ "c2r3" ];
+      };
+    };
   };
 }
