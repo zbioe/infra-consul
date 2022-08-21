@@ -1,5 +1,5 @@
 { config, lib, pkgs, ... }:
 
 {
-  imports = [ ./libvirt ./gcp ];
+  imports = [ ./libvirt ./gcp ./azure ];
 }

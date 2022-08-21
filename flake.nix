@@ -205,10 +205,11 @@
       colmena = let
         # read attributes from ouput.json gerated by `nix run .#apply`
         inherit (builtins) fromJSON readFile foldl' attrNames;
+        inherit (pkgs.lib.cfg) attrsMap;
         keys = import ./keys; # datacenter: {...}
         genOutput = env:
           let output = fromJSON (readFile ./env/${env}/output.json);
-          in foldl' (a: b: a // b) { } (map (name:
+          in (attrsMap output (name:
             let host = output.${name}.value;
             in {
               # generate hosts by name prefix
@@ -220,7 +221,7 @@
                   keys = import ./keys;
                 };
               };
-            }) (attrNames output));
+            })).content;
       in {
         meta = { nixpkgs = pkgs; };
         defaults = import ./deploys/consul;

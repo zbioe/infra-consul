@@ -52,10 +52,8 @@ in {
           zone = mk' str gcp.zone "name of image";
           family = mk' str "nixos" "name of family";
           description = mk' str "description ${name}" "images description";
-          source = mk' str
-            "gs://nixos-images-gcp/nixos-image-21.05.4709.88579effa7e-x86_64-linux.raw.tar.z"
-            "path for imgs or name of another volume";
-
+          source =
+            mk' str "../../images/gcp/raw.tar.gz" "path for machine image";
         };
       });
 
@@ -122,8 +120,8 @@ in {
 
   in {
     terraform.required_providers =
-      mkIf gcp.enable { google-beta.source = "hashicorp/google-beta"; };
-    provider.google-beta = mkIf gcp.enable {
+      mkIf gcp.enable { google.source = "hashicorp/google"; };
+    provider.google = mkIf gcp.enable {
       project = gcp.project;
       region = gcp.region;
       zone = gcp.zone;

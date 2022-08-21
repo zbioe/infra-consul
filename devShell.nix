@@ -1,9 +1,6 @@
 { pkgs, system, ... }:
-with pkgs;
 let
-  inherit (builtins) readFile;
-  inherit (writers) writeBash;
-
+  inherit (pkgs) writeScriptBin mkShell;
   # Build images
   build = writeScriptBin "build" ''
     set -eu
@@ -94,12 +91,12 @@ let
     nix run .#local-k8s
   '';
 in mkShell {
-  packages = [
+  packages = with pkgs; [
     # build images
     build
-    build-qcow
-    build-gce
-    build-azure
+    build-qcow # libvirt
+    build-gce # gcp
+    build-azure # azure
 
     # provision apply
     apply
@@ -113,7 +110,7 @@ in mkShell {
     destroy-gcp
     destroy-azure
 
-    # deploy nix
+    # deploy to nixos
     deploy
     deploy-libvirt
     deploy-gcp
@@ -127,7 +124,6 @@ in mkShell {
 
     # start local vault
     local-vault
-
     # start local k8s
     local-k8s
 

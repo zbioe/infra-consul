@@ -1,15 +1,14 @@
 { config, lib, pkgs, ... }: {
   provision.azure = {
     enable = true;
-    project = "bornlogic-consul";
+    group = "bornlogic-consul";
 
-    # images = {
-    #   nixos = {
-    #     location = "US";
-    #     source = toString
-    #       ../../images/gce/nixos-image-22.05.20220728.9370544-x86_64-linux.raw.tar.gz;
-    #   };
-    # };
+    images = {
+      nixos = {
+        location = "US";
+        source = toString ../../images/azure/disk.vhd;
+      };
+    };
 
     # networks = {
     #   prod = { description = "production network"; };
