@@ -21,18 +21,44 @@
       };
     };
 
-    interfaces = {
+    interfaces = let
+      rules = {
+        ssh_allow = {
+          direction = "Inbound";
+          description = "Allow SSH";
+          access = "Allow";
+          protocol = "TCP";
+          source_port_range = "0";
+          source_address_prefix = "*";
+          destination_port_range = "22";
+          destination_address_prefix = "*";
+        };
+        allow_all = {
+          direction = "Inbound";
+          description = "Allow All (Production Unsafe)";
+          access = "Allow";
+          protocol = "Tcp";
+          source_port_range = "*";
+          source_address_prefix = "*";
+          destination_port_range = "*";
+          destination_address_prefix = "*";
+        };
+      };
+    in {
       c2r1 = {
+        inherit rules;
         network = "test";
         subnetwork = "n1";
         tags = { description = "mainly c2r1 interface"; };
       };
       c2r2 = {
+        inherit rules;
         network = "test";
         subnetwork = "n1";
         tags = { description = "mainly c2r2 interface"; };
       };
       c2r3 = {
+        inherit rules;
         network = "test";
         subnetwork = "n1";
         tags = { description = "mainly c2r3 interface"; };

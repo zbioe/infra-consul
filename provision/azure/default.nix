@@ -48,6 +48,28 @@ in {
           tags = mk' (attrsOf str) { "image" = cfg.image; } "tags";
           network = mk' str "default" "network interface used";
           subnetwork = mk' str "n1" "subnetwork interface used";
+          rules = mk' (attrsOf rulesModule) { } "rules options";
+        };
+      });
+
+      rulesModule = submodule ({ config, name, ... }: {
+        options = {
+          group = mk' str azure.group "resource group";
+          location = mk' str azure.location "location of image";
+          name = mk' str name "name of rule";
+          priority = mk' int 0
+            "rule priority (if priority <= 0, this is setted to auto)";
+          tags = mk' (attrsOf str) { "image" = cfg.image; } "tags";
+          direction =
+            mk' (enum [ "Inbound" "Outbound" ]) "Inbound" "direction of rule";
+          access = mk' (enum [ "Allow" "Deny" ]) "Allow" "access";
+          protocol = mk' (enum [ "Tcp" "Udp" "Icmp" "Esp" "Ah" "*" ]) "Tcp"
+            "protocol of rule";
+          description = mk' str "" "description";
+          source_port_range = mk' str "*" "source port range";
+          source_address_prefix = mk' str "*" "source address prefix";
+          destination_port_range = mk' str "*" "destination port range";
+          destination_address_prefix = mk' str "*" "destination address prefix";
         };
       });
 
@@ -239,6 +261,40 @@ in {
           }];
         };
       });
+
+      azurerm_network_security_group = attrsMap interfaces (name: {
+        ${name} = with interfaces.${name};
+          let inherit (pkgs.lib) foldl';
+          in {
+            inherit name location tags;
+            resource_group_name = group;
+            security_rule = listMap rules (id: name:
+              with rules.${name};
+              let priority_ = if priority > 0 then priority else (id + 100);
+              in {
+                inherit name description direction access protocol
+                  destination_address_prefix source_address_prefix;
+                priority = priority_;
+                source_port_range = "*";
+                destination_port_range = "*";
+                source_port_ranges = [ ];
+                destination_port_ranges = [ ];
+                destination_application_security_group_ids = [ ];
+                source_application_security_group_ids = [ ];
+                source_address_prefixes = [ ];
+                destination_address_prefixes = [ ];
+              });
+          };
+      });
+
+      azurerm_network_interface_security_group_association = attrsMap interfaces
+        (name: {
+          ${name} = with interfaces.${name}; {
+            network_interface_id = "\${ azurerm_network_interface.${name}.id }";
+            network_security_group_id =
+              "\${ azurerm_network_security_group.${name}.id }";
+          };
+        });
 
       azurerm_virtual_machine = attrsMap replicas (name:
         with replicas.${name};

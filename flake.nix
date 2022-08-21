@@ -82,6 +82,7 @@
             scripts/terranix-apply.sh "libvirt" ${libvirtConfig}
           '');
         };
+
         # nix run ".#apply-gcp"
         apply-gcp = {
           type = "app";
