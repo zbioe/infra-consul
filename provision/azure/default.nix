@@ -139,13 +139,6 @@ in {
         tags = azure.tags;
       };
 
-      azurerm_network_security_group = attrsMap networks (name: {
-        ${name} = with networks.${name}; {
-          inherit name location;
-          resource_group_name = group;
-        };
-      });
-
       azurerm_virtual_network = attrsMap networks (name: {
         ${name} = with networks.${name}; {
           inherit location name tags dns_servers;
@@ -167,9 +160,14 @@ in {
             };
           }));
 
-      # TODO:
-      # subnet_network_security_group_association =
-      # "\${ azurerm_network_security_group.${name}.id }";
+      azurerm_storage_container = attrsMap images (name:
+        with images.${name}; {
+          ${name} = {
+            inherit name;
+            storage_account_name = "\${ azurerm_storage_account.${name}.name }";
+            container_access_type = "private";
+          };
+        });
 
       azurerm_storage_account = attrsMap images (name: {
         ${name} = with images.${name};
@@ -190,15 +188,6 @@ in {
           };
       });
 
-      azurerm_storage_container = attrsMap images (name:
-        with images.${name}; {
-          ${name} = {
-            inherit name;
-            storage_account_name = "\${ azurerm_storage_account.${name}.name }";
-            container_access_type = "private";
-          };
-        });
-
       azurerm_storage_blob = attrsMap images (name:
         with images.${name}; {
           ${name} = {
@@ -215,20 +204,6 @@ in {
             };
           };
         });
-
-      # azurerm_managed_disk = attrsMap images (name:
-      #   with images.${name}; {
-      #     ${name} = {
-      #       inherit name location tags;
-      #       storage_account_id = "\${ azurerm_storage_account.${name}.id }";
-      #       resource_group_name = "\${ azurerm_resource_group.${group}.name }";
-      #       os_type = "Linux";
-      #       storage_account_type = "Standard_LRS";
-      #       create_option = "Import";
-      #       source_uri = "\${ azurerm_storage_blob.${name}.id }";
-      #       disk_size_gb = "2";
-      #     };
-      #   });
 
       azurerm_image = attrsMap images (name:
         with images.${name}; {
@@ -304,13 +279,10 @@ in {
 
     output = attrsMap interfaces (name:
       let
-        inherit (builtins) head;
-        repl = replicas.${name};
-        pub = "\${ azurerm_virtual_machine.${name} }";
-        priv = "\${ azurerm_virtual_machine.${name} }";
+        pub = "\${ azurerm_public_ip.${name}.ip_address }";
+        priv = "\${ azurerm_network_interface.${name}.private_ip_address }";
       in {
         ${name} = {
-          sensitive = true;
           value = with azure; {
             inherit name;
             ip = { inherit pub priv; };
