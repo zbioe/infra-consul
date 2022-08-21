@@ -2,14 +2,14 @@
   provision.azure = {
     enable = true;
     group = "bornlogic-consul";
-
+    location = "East US 2";
     networks = {
       prod = { tags = { env = "production"; }; };
       stag = { tags = { env = "staging"; }; };
       test = {
         tags = { env = "testing"; };
         cidr_ranges = [ "10.0.0.0/16" ];
-        subnetworks = { n1 = { cidr_range = "10.1.0.0/16"; }; };
+        subnetworks = { n1 = { cidr_ranges = [ "10.0.1.0/24" ]; }; };
       };
     };
 

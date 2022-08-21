@@ -23,14 +23,16 @@ in {
       subnetworksModule = submodule ({ config, name, ... }: {
         options = {
           name = mk' str name "name of subnetwork";
-          cidr_range = mk' str "10.0.0.1/16" "cidr ranges network";
+          cidr_ranges =
+            mk' (listOf str) [ "10.0.1.0/16" ] "cidr ranges network";
+          group = mk' str azure.group "resource group";
         };
       });
 
       imagesModule = submodule ({ config, name, ... }: {
         options = {
           project = mk' str azure.project "project";
-          location = mk' str azure.region "location";
+          location = mk' str azure.location "location";
           labels = mk' (attrsOf str) { name = name; } "labels";
           name = mk' str name "name of image";
           zone = mk' str azure.zone "name of image";
@@ -95,10 +97,9 @@ in {
     inherit (builtins) attrNames;
     inherit (lib) mkIf readFile assertMsg;
     inherit (lib.strings) removeSuffix;
-    inherit (pkgs.lib.cfg) attrsMap;
+    inherit (pkgs.lib.cfg) attrsMap listMap;
     azure = config.provision.azure;
     networks = azure.networks;
-    subnetworks = azure.subnetworks;
 
   in {
     terraform.required_providers =
@@ -121,20 +122,39 @@ in {
         tags = azure.tags;
       };
 
+      azurerm_network_security_group = attrsMap networks (name: {
+        ${name} = with networks.${name}; {
+          inherit name location;
+          resource_group_name = group;
+        };
+      });
+
       azurerm_virtual_network = attrsMap networks (name: {
         ${name} = with networks.${name}; {
           inherit location name tags dns_servers;
           address_space = cidr_ranges;
           resource_group_name = group;
-          subnetworks = attrsMap subnetworks (sname: {
-            ${sname} = with subnetworks.${name}; {
-              name = sname;
-              address_prefix = cidr_range;
-            };
-          });
         };
       });
+
+      azurerm_subnet = attrsMap networks (name:
+        let subnetworks = networks.${name}.subnetworks;
+        in attrsMap subnetworks (sname:
+          with subnetworks.${sname}; {
+            ${sname} = {
+              name = sname;
+              resource_group_name = group;
+              virtual_network_name =
+                "\${ azurerm_virtual_network.${name}.name }";
+              address_prefixes = cidr_ranges;
+            };
+          }));
     };
+
+    # TODO:
+    # subnet_network_security_group_association =
+    # "\${ azurerm_network_security_group.${name}.id }";
+
     # output = attrsMap replicas (name:
     #   let
     #     inherit (builtins) head;
