@@ -1,10 +1,10 @@
-# Consul Deploy
-
-Consul cluster in local vms server
+# Infra Consul
+Infra environment for deploy consul with Federation and vault integration
+in differents environments with same deploy.
 
 ## Requirements
 
-Have some dependecies depending what environment are you using.
+Have some dependecies accordingly what environment are you using.
 
 ### Libvirtd
 `libvirtd` needs to works in your environment.  
@@ -24,6 +24,7 @@ Add follow options to your `configuration.nix`:
 ```
 
 ### GCP
+Need instalation of gcloud, or append it inside devShell.
 ``` nix
 {
   environment.systemPackages = [
@@ -38,6 +39,7 @@ gcloud auth application-default login
 ```
 
 ### Azure
+required az command. you can put it inside devShell too.
 ``` nix
 {
   environment.systemPackages = [
