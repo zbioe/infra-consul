@@ -119,7 +119,7 @@
         destroy-azure = {
           type = "app";
           program = toString (pkgs.writers.writeBash "destroy-azure" ''
-            scripts/terranix-destroy.sh "azure" ${gcpConfig}
+            scripts/terranix-destroy.sh "azure" ${azureConfig}
           '');
         };
 

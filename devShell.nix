@@ -145,7 +145,7 @@ in mkShell {
   ];
   shellHook = ''
     export NIX_PATH=${pkgs.path}
-    export VAULT_ADDR=''${CD_VAULT_ADDR:-"http://10.0.62.1:8200"}
-    export VAULT_TOKEN=''${CD_VAULT_TOKEN:-"root-token"}
+    export VAULT_ADDR=''${IC_VAULT_ADDR:-"http://10.0.62.1:8200"}
+    export VAULT_TOKEN=''${IC_VAULT_TOKEN:-"root-token"}
   '';
 }

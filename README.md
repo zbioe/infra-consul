@@ -24,7 +24,7 @@ Add follow options to your `configuration.nix`:
 ```
 
 ### GCP
-Need instalation of gcloud, or append it inside devShell.
+Need instalation of gcloud, or append it inside devShell.  
 ``` nix
 {
   environment.systemPackages = [
@@ -39,7 +39,7 @@ gcloud auth application-default login
 ```
 
 ### Azure
-required az command. you can put it inside devShell too.
+required az command. you can put it inside devShell too.  
 ``` nix
 {
   environment.systemPackages = [
