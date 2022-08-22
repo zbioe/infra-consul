@@ -2,6 +2,8 @@
 Infra environment for deploy consul with Federation and vault integration
 in differents environments with same deploy.
 
+## Steps Simplified
+ - [./steps.txt](gcp/azure federation with vault integration)
 ## Requirements
 
 Have some dependecies accordingly what environment are you using.

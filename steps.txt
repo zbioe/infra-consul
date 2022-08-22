@@ -1,0 +1,35 @@
+# Set VAULT ENVs
+# inside the nixShell
+set -x VAULT_ADDR <vault-addr>
+set -x VAULT_TOKEN <vault-token>
+# or set
+# set -x IC_VAULT_ADDR <vault-addr>
+# set -x IC_VAULT_TOKEN <vault-token>
+# outside the shell
+# and use nix develop to load shell with VAULT_* overwrited by IC_VAULT_*
+# configure vault with
+./scripts/vault-init.sh
+
+# Build Image
+build gce
+# ls images/gce
+
+build azure
+# ls images/azure
+
+# config file with declaration of the infra
+# vim env/gcp/config.nix
+# vim env/azure/config.nix
+
+# Provision Apply
+# jq . env/gcp/output.json
+apply gcp
+# jq . env/gcp/output.json
+
+# jq . env/azure/output.json
+apply azure
+# jq . env/azure/output.json
+
+# Deploy
+deploy azure
+deploy gcp
