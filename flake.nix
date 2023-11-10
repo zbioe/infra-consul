@@ -2,7 +2,7 @@
   description = "Consul Deploy";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/9370544d849b";
+    nixpkgs.url = "github:NixOS/nixpkgs/c41b26e688ff";
     # terraform module
     terranix = {
       url = "github:terranix/terranix";

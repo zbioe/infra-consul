@@ -4,8 +4,10 @@ let
   username = "main";
   password = "alface";
 in {
-  services.openssh.enable = true;
-  services.openssh.passwordAuthentication = false;
+  services.openssh = {
+    enable = true;
+    settings = { PasswordAuthentication = true; };
+  };
   fileSystems."/" = {
     device = "/dev/disk/by-label/nixos";
     fsType = "ext4";

@@ -142,6 +142,7 @@ in mkShell {
     colmena
     vault
     bashInteractive
+    nixdoc
   ];
   shellHook = ''
     export NIX_PATH=${pkgs.path}
